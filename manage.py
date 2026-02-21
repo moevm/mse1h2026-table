@@ -30,9 +30,12 @@ def now():
     return datetime.datetime.now().isoformat()
 
 
+# =========================
 # DEPLOY
+# =========================
 
 def deploy_up(args):
+    # deploy up
     print("[STUB] docker compose up -d")
     success({
         "services": ["nextcloud", "onlyoffice", "postgres", "redis"],
@@ -42,6 +45,7 @@ def deploy_up(args):
 
 
 def deploy_down(args):
+    # deploy down
     print("[STUB] docker compose down")
     success({
         "status": "stopped",
@@ -50,6 +54,7 @@ def deploy_down(args):
 
 
 def deploy_status(args):
+    # deploy status
     success({
         "nextcloud": "running",
         "onlyoffice": "running",
@@ -58,12 +63,12 @@ def deploy_status(args):
     }, args.output)
 
 
+# =========================
 # USERS
+# =========================
 
 def users_create(args):
-    if not args.user:
-        error("User is required", 2)
-
+    # users create [user]
     print(f"[STUB] Creating Nextcloud user: {args.user}")
     success({
         "username": args.user,
@@ -73,9 +78,7 @@ def users_create(args):
 
 
 def users_delete(args):
-    if not args.user:
-        error("User is required", 2)
-
+    # users delete [user]
     print(f"[STUB] Deleting Nextcloud user: {args.user}")
     success({
         "username": args.user,
@@ -84,6 +87,7 @@ def users_delete(args):
 
 
 def users_list(args):
+    # users list
     success({
         "users": [
             {"username": "admin"},
@@ -93,9 +97,12 @@ def users_list(args):
     }, args.output)
 
 
+# =========================
 # BACKUP
+# =========================
 
 def backup_create(args):
+    # backup create
     backup_id = f"backup-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
     print("[STUB] Creating backup")
     success({
@@ -106,6 +113,7 @@ def backup_create(args):
 
 
 def backup_list(args):
+    # backup list
     success({
         "backups": [
             {"id": "backup-20260220010101", "size": "120MB"},
@@ -115,9 +123,7 @@ def backup_list(args):
 
 
 def backup_restore(args):
-    if not args.backup_id:
-        error("backup_id required", 2)
-
+    # backup restore [backup_id]
     print(f"[STUB] Restoring backup {args.backup_id}")
     success({
         "backup_id": args.backup_id,
@@ -125,9 +131,38 @@ def backup_restore(args):
     }, args.output)
 
 
+# =========================
+# MIGRATE
+# =========================
+
+def migrate_status(args):
+    # migrate status
+    success({
+        "current_version": "28.0.2",
+        "available_version": "28.1.0",
+        "upgrade_required": True
+    }, args.output)
+
+
+def migrate_apply(args):
+    # migrate apply
+    print("[STUB] Creating automatic backup before migration")
+    print("[STUB] Running occ upgrade")
+    print("[STUB] Restarting services")
+
+    success({
+        "migration": "completed",
+        "backup_created": True,
+        "timestamp": now()
+    }, args.output)
+
+
+# =========================
 # MONITOR
+# =========================
 
 def monitor_status(args):
+    # monitor status
     success({
         "overall": "OK",
         "nextcloud": {"status": "ok", "response_ms": 210},
@@ -136,6 +171,7 @@ def monitor_status(args):
 
 
 def monitor_resources(args):
+    # monitor resources
     success({
         "cpu_percent": 32,
         "memory_mb": 1024,
@@ -144,6 +180,7 @@ def monitor_resources(args):
 
 
 def monitor_load_test(args):
+    # monitor load-test [users]
     print("[STUB] Running load test simulation")
     success({
         "simulated_users": args.users,
@@ -153,12 +190,9 @@ def monitor_load_test(args):
 
 
 # INTEGRATIONS
-# lms_grades_export or github_repo_commitment_calc
 
 def integrations_run(args):
-    if not args.module:
-        error("Module name required", 2)
-
+    # integrations [module]
     print(f"[STUB] Running integration module: {args.module}")
     success({
         "module": args.module,
@@ -188,11 +222,11 @@ def main():
     users_sub = users.add_subparsers(dest="action")
 
     create = users_sub.add_parser("create")
-    create.add_argument("--user")
+    create.add_argument("user")
     create.set_defaults(func=users_create)
 
     delete = users_sub.add_parser("delete")
-    delete.add_argument("--user")
+    delete.add_argument("user")
     delete.set_defaults(func=users_delete)
 
     users_sub.add_parser("list").set_defaults(func=users_list)
@@ -205,8 +239,15 @@ def main():
     backup_sub.add_parser("list").set_defaults(func=backup_list)
 
     restore = backup_sub.add_parser("restore")
-    restore.add_argument("--backup-id")
+    restore.add_argument("backup_id")
     restore.set_defaults(func=backup_restore)
+
+    # MIGRATE
+    migrate = subparsers.add_parser("migrate")
+    migrate_sub = migrate.add_subparsers(dest="action")
+
+    migrate_sub.add_parser("status").set_defaults(func=migrate_status)
+    migrate_sub.add_parser("apply").set_defaults(func=migrate_apply)
 
     # MONITOR
     monitor = subparsers.add_parser("monitor")
@@ -216,7 +257,7 @@ def main():
     monitor_sub.add_parser("resources").set_defaults(func=monitor_resources)
 
     load_test = monitor_sub.add_parser("load-test")
-    load_test.add_argument("--users", type=int, default=50)
+    load_test.add_argument("users", type=int)
     load_test.set_defaults(func=monitor_load_test)
 
     # INTEGRATIONS
