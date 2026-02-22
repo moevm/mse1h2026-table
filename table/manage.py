@@ -30,15 +30,13 @@ def now():
     return datetime.datetime.now().isoformat()
 
 
-# =========================
 # DEPLOY
-# =========================
 
 def deploy_up(args):
     # deploy up
     print("[STUB] docker compose up -d")
     success({
-        "services": ["nextcloud", "onlyoffice", "postgres", "redis"],
+        "services": ["tables", "forms"],
         "status": "running",
         "timestamp": now()
     }, args.output)
@@ -56,20 +54,16 @@ def deploy_down(args):
 def deploy_status(args):
     # deploy status
     success({
-        "nextcloud": "running",
-        "onlyoffice": "running",
-        "postgres": "running",
-        "redis": "running"
+        "tables": "running",
+        "forms": "running"
     }, args.output)
 
 
-# =========================
 # USERS
-# =========================
 
 def users_create(args):
     # users create [user]
-    print(f"[STUB] Creating Nextcloud user: {args.user}")
+    print(f"[STUB] Creating user: {args.user}")
     success({
         "username": args.user,
         "status": "created",
@@ -79,7 +73,7 @@ def users_create(args):
 
 def users_delete(args):
     # users delete [user]
-    print(f"[STUB] Deleting Nextcloud user: {args.user}")
+    print(f"[STUB] Deleting user: {args.user}")
     success({
         "username": args.user,
         "status": "deleted"
@@ -97,9 +91,7 @@ def users_list(args):
     }, args.output)
 
 
-# =========================
 # BACKUP
-# =========================
 
 def backup_create(args):
     # backup create
@@ -131,9 +123,7 @@ def backup_restore(args):
     }, args.output)
 
 
-# =========================
 # MIGRATE
-# =========================
 
 def migrate_status(args):
     # migrate status
@@ -147,7 +137,7 @@ def migrate_status(args):
 def migrate_apply(args):
     # migrate apply
     print("[STUB] Creating automatic backup before migration")
-    print("[STUB] Running occ upgrade")
+    print("[STUB] Applying migrates")
     print("[STUB] Restarting services")
 
     success({
@@ -157,16 +147,14 @@ def migrate_apply(args):
     }, args.output)
 
 
-# =========================
 # MONITOR
-# =========================
 
 def monitor_status(args):
     # monitor status
     success({
         "overall": "OK",
-        "nextcloud": {"status": "ok", "response_ms": 210},
-        "onlyoffice": {"status": "ok", "response_ms": 150}
+        "tables": {"status": "ok", "response_ms": 210},
+        "forms": {"status": "ok", "response_ms": 150}
     }, args.output)
 
 
@@ -190,6 +178,7 @@ def monitor_load_test(args):
 
 
 # INTEGRATIONS
+# export to lms_grades_export or github_repo_commitment_calc
 
 def integrations_run(args):
     # integrations [module]
