@@ -38,7 +38,9 @@ def deploy_up(args):
     success({
         "services": ["tables", "forms"],
         "status": "running",
-        "timestamp": now()
+        "timestamp": now(),
+        "env": args.env,
+        "project_dir": args.project_dir
     }, args.output)
 
 
@@ -167,8 +169,10 @@ def monitor_resources(args):
     }, args.output)
 
 
-def monitor_load_test(args):
-    # monitor load-test [users]
+# LOADTEST
+
+def loadtest_run(args):
+    # loadtest run --users N
     print("[STUB] Running load test simulation")
     success({
         "simulated_users": args.users,
@@ -177,12 +181,11 @@ def monitor_load_test(args):
     }, args.output)
 
 
-# INTEGRATIONS
-# export to lms_grades_export or github_repo_commitment_calc
+# EXPORT
 
-def integrations_run(args):
-    # integrations [module]
-    print(f"[STUB] Running integration module: {args.module}")
+def export_run(args):
+    # export [module]
+    print(f"[STUB] Running export module: {args.module}")
     success({
         "module": args.module,
         "status": "completed",
@@ -194,13 +197,18 @@ def integrations_run(args):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--output", choices=["text", "json"], default="text")
 
-    subparsers = parser.add_subparsers(dest="command")
+    # Global flags
+    parser.add_argument("--output", choices=["text", "json"], default="text")
+    parser.add_argument("--config", help="Path to config file")
+    parser.add_argument("--env", help="Env")
+    parser.add_argument("--project-dir", default=".", help="Project directory")
+
+    subparsers = parser.add_subparsers(dest="command", required=True)
 
     # DEPLOY
     deploy = subparsers.add_parser("deploy")
-    deploy_sub = deploy.add_subparsers(dest="action")
+    deploy_sub = deploy.add_subparsers(dest="action", required=True)
 
     deploy_sub.add_parser("up").set_defaults(func=deploy_up)
     deploy_sub.add_parser("down").set_defaults(func=deploy_down)
@@ -208,7 +216,7 @@ def main():
 
     # USERS
     users = subparsers.add_parser("users")
-    users_sub = users.add_subparsers(dest="action")
+    users_sub = users.add_subparsers(dest="action", required=True)
 
     create = users_sub.add_parser("create")
     create.add_argument("user")
@@ -222,7 +230,7 @@ def main():
 
     # BACKUP
     backup = subparsers.add_parser("backup")
-    backup_sub = backup.add_subparsers(dest="action")
+    backup_sub = backup.add_subparsers(dest="action", required=True)
 
     backup_sub.add_parser("create").set_defaults(func=backup_create)
     backup_sub.add_parser("list").set_defaults(func=backup_list)
@@ -233,34 +241,33 @@ def main():
 
     # MIGRATE
     migrate = subparsers.add_parser("migrate")
-    migrate_sub = migrate.add_subparsers(dest="action")
+    migrate_sub = migrate.add_subparsers(dest="action", required=True)
 
     migrate_sub.add_parser("status").set_defaults(func=migrate_status)
     migrate_sub.add_parser("apply").set_defaults(func=migrate_apply)
 
     # MONITOR
     monitor = subparsers.add_parser("monitor")
-    monitor_sub = monitor.add_subparsers(dest="action")
+    monitor_sub = monitor.add_subparsers(dest="action", required=True)
 
     monitor_sub.add_parser("status").set_defaults(func=monitor_status)
     monitor_sub.add_parser("resources").set_defaults(func=monitor_resources)
 
-    load_test = monitor_sub.add_parser("load-test")
-    load_test.add_argument("users", type=int)
-    load_test.set_defaults(func=monitor_load_test)
+    # LOADTEST
+    loadtest = subparsers.add_parser("loadtest")
+    loadtest_sub = loadtest.add_subparsers(dest="action", required=True)
 
-    # INTEGRATIONS
-    integrations = subparsers.add_parser("integrations")
-    integrations.add_argument("module")
-    integrations.set_defaults(func=integrations_run)
+    run = loadtest_sub.add_parser("run")
+    run.add_argument("--users", type=int, required=True)
+    run.set_defaults(func=loadtest_run)
+
+    # EXPORT
+    export = subparsers.add_parser("export")
+    export.add_argument("module", choices=["gitlogger", "lms"])
+    export.set_defaults(func=export_run)
 
     args = parser.parse_args()
-
-    if hasattr(args, "func"):
-        args.func(args)
-    else:
-        parser.print_help()
-        sys.exit(1)
+    args.func(args)
 
 
 if __name__ == "__main__":
