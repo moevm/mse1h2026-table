@@ -1,0 +1,10 @@
+environment: dev
+
+
+services:
+  table_url: "https://tables-example.ru"
+  form_url: "https://forms-example.ru"
+
+
+backup:
+  directory: "./backups"
