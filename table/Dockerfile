@@ -6,6 +6,6 @@ COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY manage.py .
+COPY . .
 
 ENTRYPOINT ["python", "manage.py"]
