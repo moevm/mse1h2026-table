@@ -1,7 +1,7 @@
 import requests
 
 TOKEN = ''  # API-token админа
-SEAFILE_URL = ''  # # Ссылка на сервис
+SEAFILE_URL = ''  # Ссылка на сервис
 
 
 def list_users(page=1, per_page=50):
@@ -24,8 +24,8 @@ def list_users(page=1, per_page=50):
 
         for user in data['data']:
             print(f"{user['email']} | Имя: {user.get('name', '—')} | "
-                    f"Активен: {user['is_active'] == True} | "
-                    f"Лимит: {user['quota_total']} МБ")
+                  f"Активен: {user['is_active']} | "
+                  f"Лимит: {user['quota_total']} МБ")
         return data
     else:
         print(f"Ошибка {response.status_code}: {response.text}")
