@@ -2,6 +2,8 @@ import argparse
 import sys
 import json
 import datetime
+import os
+import yaml
 
 
 def print_output(data, fmt="text"):
@@ -28,6 +30,49 @@ def error(message, code=1):
 
 def now():
     return datetime.datetime.now().isoformat()
+
+
+def load_config(args):
+    # --config [path] config load
+    cfg_path = args.config
+    if not os.path.exists(cfg_path):
+        error(f"File not found at path {cfg_path}")
+    try:
+        with open(cfg_path, "r") as f:
+            data = yaml.safe_load(f)
+    except yaml.YAMLError:
+        error("Invalid YAML file")
+
+    # Проверки на корректность аргументов файла конфигурации
+    try:
+        if not data['environment']:
+            error("Field 'enviroment' is empty")
+
+        if not data['services']:
+            error("Field 'services' is empty")
+        else:
+            if not isinstance(data['services'], dict):
+                error("Field 'services' must be a mapping")
+
+            if not data['services']['table_url']:
+                error("Field 'table_url' is empty")
+
+            if not data['services']['form_url']:
+                error("Field 'form_url' is empty")
+
+        if not data['backup']:
+            error("Field 'backup' is empty")
+        else:
+            if not isinstance(data['services'], dict):
+                error("Field 'backup' must be a mapping")
+
+            if not data['backup']['directory']:
+                error("Field 'directory' is empty")
+
+    except KeyError as e:
+        error(f"Missing required field {e.args[0]} at config file")
+
+    return data
 
 
 # DEPLOY
@@ -205,6 +250,12 @@ def main():
     parser.add_argument("--project-dir", default=".", help="Project directory")
 
     subparsers = parser.add_subparsers(dest="command", required=True)
+
+    # CONFIG
+    config = subparsers.add_parser("config")
+    config_sub = config.add_subparsers(dest="action", required=True)
+
+    config_sub.add_parser("load").set_defaults(func=load_config)
 
     # DEPLOY
     deploy = subparsers.add_parser("deploy")
