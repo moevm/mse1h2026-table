@@ -278,7 +278,8 @@ def main():
     csv_create = users_sub.add_parser("csv-create")
     csv_create.add_argument("csv_file", help="Full path to CSV file")
     csv_create.add_argument("--url",
-                            default="http://localhost",
+                            default=os.environ.get("NEXTCLOUD_URL",
+                                                   "http://localhost"),
                             help="Nextcloud API URL")
     csv_create.add_argument("--username",
                             default=os.environ.get("NEXTCLOUD_ADMIN_USER",
@@ -293,7 +294,8 @@ def main():
     csv_delete = users_sub.add_parser("csv-delete")
     csv_delete.add_argument("csv_file", help="Full path to CSV file")
     csv_delete.add_argument("--url",
-                            default="http://localhost",
+                            default=os.environ.get("NEXTCLOUD_URL",
+                                                   "http://localhost"),
                             help="Nextcloud API URL")
     csv_delete.add_argument("--username",
                             default=os.environ.get("NEXTCLOUD_ADMIN_USER",
