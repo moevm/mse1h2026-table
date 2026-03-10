@@ -10,9 +10,9 @@ services:
       - SQLITE_DATABASE=nextcloud
       # чтобы Nextcloud адекватно жил за nginx
       - TRUSTED_PROXIES=nginx-server
-      - OVERWRITEHOST=localhost
+      - OVERWRITEHOST=localhost:8080
       - OVERWRITEPROTOCOL=http
-      - OVERWRITECLIURL=http://nginx-server
+      - OVERWRITECLIURL=http://localhost:8080
     volumes:
       - app_data:/var/www/html
     depends_on:
@@ -33,7 +33,7 @@ services:
     image: nginx:alpine
     restart: always
     ports:
-      - "${NEXTCLOUD_PORT}:80"
+      - "8080:80"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - app_data:/var/www/html:ro
@@ -57,21 +57,25 @@ services:
 
         php /var/www/html/occ app:install onlyoffice || php /var/www/html/occ app:enable onlyoffice;
 
-        php /var/www/html/occ config:app:set onlyoffice DocumentServerUrl --value='http://localhost/onlyoffice/';
+        php /var/www/html/occ config:app:set onlyoffice DocumentServerUrl --value='http://localhost:8080/onlyoffice/';
         php /var/www/html/occ config:app:set onlyoffice DocumentServerInternalUrl --value='http://onlyoffice-document-server/';
         php /var/www/html/occ config:app:set onlyoffice StorageUrl --value='http://nginx-server/';
         php /var/www/html/occ config:app:set onlyoffice jwt_secret --value='${JWT_SECRET}';
 
-        php /var/www/html/occ config:system:set overwrite.cli.url --value='http://nginx-server' --type=string;
-        php /var/www/html/occ config:system:set overwritehost --value='localhost' --type=string;
+        php /var/www/html/occ config:system:set overwrite.cli.url --value='http://localhost:8080' --type=string;
+        php /var/www/html/occ config:system:set overwritehost --value='localhost:8080' --type=string;
         php /var/www/html/occ config:system:set overwriteprotocol --value='http' --type=string;
         php /var/www/html/occ config:system:set trusted_proxies 0 --value='nginx-server' --type=string;
         php /var/www/html/occ config:system:set trusted_domains 0 --value='localhost' --type=string;
-        php /var/www/html/occ config:system:set trusted_domains 1 --value='nginx-server' --type=string;
+        php /var/www/html/occ config:system:set trusted_domains 1 --value='localhost:8080' --type=string;
+        php /var/www/html/occ config:system:set trusted_domains 2 --value='nginx-server' --type=string;
+        php /var/www/html/occ config:system:set trusted_domains 3 --value='host.docker.internal' --type=string;
+        php /var/www/html/occ config:system:set trusted_domains 4 --value='host.docker.internal:8080' --type=string;
 
         php /var/www/html/occ app:enable oauth2;
         php /var/www/html/occ app:install webhook_listeners || php /var/www/html/occ app:enable webhook_listeners;
         php /var/www/html/occ app:install forms || php /var/www/html/occ app:enable forms;
+        php /var/www/html/occ app:install integration_windmill || php /var/www/html/occ app:enable integration_windmill;
 
         echo 'ONLYOFFICE and Windmill integration apps configured OK';
       "
@@ -95,7 +99,7 @@ services:
 
   windmill:
     container_name: windmill-server
-    image: ghcr.io/windmill-labs/windmill:main
+    image: ghcr.io/windmill-labs/windmill:latest
     restart: always
     ports:
       - "${WINDMILL_PORT}:8000"
@@ -111,7 +115,7 @@ services:
 
   windmill-worker:
     container_name: windmill-worker
-    image: ghcr.io/windmill-labs/windmill:main
+    image: ghcr.io/windmill-labs/windmill:latest
     restart: always
     command: windmill worker
     environment:
@@ -124,7 +128,6 @@ services:
         condition: service_healthy
     volumes:
       - windmill_worker_logs:/tmp/windmill
-      - /var/run/docker.sock:/var/run/docker.sock
 
 volumes:
   document_data:
