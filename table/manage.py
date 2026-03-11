@@ -80,7 +80,7 @@ def run_command(cmd, cwd=None):
 
 
 def load_config(args):
-    # --config [path] config load
+    # --config [path]
     cfg_path = args.config
     if not os.path.exists(cfg_path):
         error(f"File not found at path {cfg_path}")
@@ -529,13 +529,7 @@ def main():
     parser.add_argument("--env", help="Env")
     parser.add_argument("--project-dir", default=".", help="Project directory")
 
-    subparsers = parser.add_subparsers(dest="command", required=True)
-
-    # CONFIG
-    config = subparsers.add_parser("config")
-    config_sub = config.add_subparsers(dest="action", required=True)
-
-    config_sub.add_parser("load").set_defaults(func=load_config)
+    subparsers = parser.add_subparsers(dest="command")
 
     # DEPLOY
     deploy = subparsers.add_parser("deploy")
@@ -655,7 +649,16 @@ def main():
     upload.set_defaults(func=upload_run)
 
     args = parser.parse_args()
-    args.func(args)
+
+    if args.config:
+        config_data = load_config(args)
+        args.config_data = config_data
+        print("Configuration loaded")
+    else:
+        args.config_data = None
+
+    if args.command is not None:
+        args.func(args)
 
 
 if __name__ == "__main__":
