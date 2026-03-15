@@ -125,30 +125,6 @@ def backup_restore(args):
     }, args.output)
 
 
-# MIGRATE
-
-def migrate_status(args):
-    # migrate status
-    success({
-        "current_version": "28.0.2",
-        "available_version": "28.1.0",
-        "upgrade_required": True
-    }, args.output)
-
-
-def migrate_apply(args):
-    # migrate apply
-    print("[STUB] Creating automatic backup before migration")
-    print("[STUB] Applying migrates")
-    print("[STUB] Restarting services")
-
-    success({
-        "migration": "completed",
-        "backup_created": True,
-        "timestamp": now()
-    }, args.output)
-
-
 # MONITOR
 
 def monitor_status(args):
@@ -238,13 +214,6 @@ def main():
     restore = backup_sub.add_parser("restore")
     restore.add_argument("backup_id")
     restore.set_defaults(func=backup_restore)
-
-    # MIGRATE
-    migrate = subparsers.add_parser("migrate")
-    migrate_sub = migrate.add_subparsers(dest="action", required=True)
-
-    migrate_sub.add_parser("status").set_defaults(func=migrate_status)
-    migrate_sub.add_parser("apply").set_defaults(func=migrate_apply)
 
     # MONITOR
     monitor = subparsers.add_parser("monitor")
