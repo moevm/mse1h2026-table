@@ -27,7 +27,7 @@ services:
     container_name: nextcloud-db
     restart: always
     environment:
-      - POSTGRES_DB=nextcloud
+      - POSTGRES_DB=${POSTGRES_DB:-nextcloud}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
