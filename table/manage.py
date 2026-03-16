@@ -207,15 +207,17 @@ def upload_run(args):
         "user": args.username,
         "pass": args.password
     }
-
-    results = upload_batch(
-        config=config,
-        file_path=args.file,
-        dir_path=args.dir,
-        dest=args.dest,
-        custom_name=args.name,
-        overwrite=args.overwrite
-    )
+    try:
+        results = upload_batch(
+            config=config,
+            file_path=args.file,
+            dir_path=args.dir,
+            dest=args.dest,
+            custom_name=args.name,
+            overwrite=args.overwrite
+        )
+    except ValueError as e:
+        error(str(e))
 
     if isinstance(results, dict) and "error" in results:
         error(results["error"])
@@ -298,8 +300,10 @@ def main():
 
     # UPLOAD
     upload = subparsers.add_parser("upload", help="Upload .xlsx tables")
-    upload.add_argument("--file", help="Path to single file")
-    upload.add_argument("--dir", help="Path to directory for batch upload")
+    source_group = upload.add_mutually_exclusive_group(required=True)
+    source_group.add_argument("--file", help="Path to single file")
+    source_group.add_argument("--dir",
+                              help="Path to directory for batch upload")
     upload.add_argument("--dest", default="/", help="Destination folder")
     upload.add_argument("--name", help="Custom name (for --file only)")
     upload.add_argument("--overwrite", action="store_true", default=False,

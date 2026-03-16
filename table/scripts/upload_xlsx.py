@@ -8,6 +8,8 @@ from urllib.parse import quote
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)
 
+REQUEST_TIMEOUT = 30
+
 
 def _ensure_cloud_directory(session, base_url, dest_path):
     """
@@ -27,11 +29,13 @@ def _ensure_cloud_directory(session, base_url, dest_path):
         full_url = f"{base_url.rstrip('/')}{quote(current_path)}"
 
         # Запрашиваем свойства объекта (Depth 0 - только сама папка)
-        resp = session.request("PROPFIND", full_url, headers={"Depth": "0"})
+        resp = session.request("PROPFIND", full_url, headers={"Depth": "0"},
+                               timeout=REQUEST_TIMEOUT)
 
         if resp.status_code == 404:
             logger.info(f"Путь {current_path} отсутствует. Создание...")
-            mkcol_resp = session.request("MKCOL", full_url)
+            mkcol_resp = session.request("MKCOL", full_url,
+                                         timeout=REQUEST_TIMEOUT)
             if mkcol_resp.status_code != 201:
                 logger.error(f"Не удалось создать директорию {current_path}")
                 return False
@@ -56,6 +60,10 @@ def upload_xlsx(session, file_path, dest_folder, config,
         return {"file": file_path, "status": "error",
                 "reason": "Local file not found"}
 
+    if not file_path.lower().endswith('.xlsx'):
+        return {"file": file_path, "status": "error",
+                "reason": "File is not .xlsx"}
+
     # Формируем имя: используем кастомное или берем оригинальное из пути
     file_name = name if name else os.path.basename(file_path)
     remote_file_path = f"{dest_folder.strip('/')}/{file_name}"
@@ -68,7 +76,8 @@ def upload_xlsx(session, file_path, dest_folder, config,
 
     # ЭТАП 2: Проверка наличия файла в облаке перед загрузкой
     check = session.request("PROPFIND", full_upload_url,
-                            headers={"Depth": "0"})
+                            headers={"Depth": "0"},
+                            timeout=REQUEST_TIMEOUT)
 
     # Статус 207 (Multi-Status) в WebDAV говорит о том, что файл существует
     if check.status_code == 207:
@@ -84,7 +93,8 @@ def upload_xlsx(session, file_path, dest_folder, config,
     try:
         with open(file_path, 'rb') as f:
             # Метод PUT сохраняет данные по указанному пути
-            resp = session.put(full_upload_url, data=f)
+            resp = session.put(full_upload_url, data=f,
+                               timeout=REQUEST_TIMEOUT)
 
         if resp.status_code in [201, 204]:
             return {
@@ -105,6 +115,10 @@ def upload_batch(config, file_path=None, dir_path=None,
     """
     files_to_process = []
 
+    if file_path and dir_path:
+        raise ValueError(
+            "Одновременное использование --file и --dir запрещено")
+
     # Определяем список файлов для обработки
     if file_path:
         files_to_process.append((file_path, custom_name))
@@ -121,10 +135,15 @@ def upload_batch(config, file_path=None, dir_path=None,
     with requests.Session() as session:
         session.auth = (config.get('user'), config.get('pass'))
 
+        # ОПТИМИЗАЦИЯ: Проверяем/создаем директорию один раз перед циклом
+        user = config.get('user')
+        dav_url = f"{config.get('url').
+                     rstrip('/')}/remote.php/dav/files/{user}"
+        if not _ensure_cloud_directory(session, dav_url, dest):
+            return {"error": f"Не удалось подготовить директорию {dest}"}
+
         for f_path, c_name in files_to_process:
-            res = upload_xlsx(
-                session, f_path, dest, config, c_name, overwrite
-            )
+            res = upload_xlsx(session, f_path, dest, config, c_name, overwrite)
             results.append(res)
 
     return results
