@@ -2,6 +2,9 @@ import argparse
 import sys
 import json
 import datetime
+import os
+
+from scripts.upload_xlsx import upload_batch
 
 
 def print_output(data, fmt="text"):
@@ -125,30 +128,6 @@ def backup_restore(args):
     }, args.output)
 
 
-# MIGRATE
-
-def migrate_status(args):
-    # migrate status
-    success({
-        "current_version": "28.0.2",
-        "available_version": "28.1.0",
-        "upgrade_required": True
-    }, args.output)
-
-
-def migrate_apply(args):
-    # migrate apply
-    print("[STUB] Creating automatic backup before migration")
-    print("[STUB] Applying migrates")
-    print("[STUB] Restarting services")
-
-    success({
-        "migration": "completed",
-        "backup_created": True,
-        "timestamp": now()
-    }, args.output)
-
-
 # MONITOR
 
 def monitor_status(args):
@@ -191,6 +170,35 @@ def export_run(args):
         "status": "completed",
         "rows_exported": 120
     }, args.output)
+
+
+# UPLOAD
+
+def upload_run(args):
+    """
+    Запуск процесса загрузки таблиц.
+    """
+    config = {
+        "url": args.url,
+        "user": args.username,
+        "pass": args.password
+    }
+    try:
+        results = upload_batch(
+            config=config,
+            file_path=args.file,
+            dir_path=args.dir,
+            dest=args.dest,
+            custom_name=args.name,
+            overwrite=args.overwrite
+        )
+    except ValueError as e:
+        error(str(e))
+
+    if isinstance(results, dict) and "error" in results:
+        error(results["error"])
+
+    success(results, args.output)
 
 
 # CLI Definition
@@ -239,13 +247,6 @@ def main():
     restore.add_argument("backup_id")
     restore.set_defaults(func=backup_restore)
 
-    # MIGRATE
-    migrate = subparsers.add_parser("migrate")
-    migrate_sub = migrate.add_subparsers(dest="action", required=True)
-
-    migrate_sub.add_parser("status").set_defaults(func=migrate_status)
-    migrate_sub.add_parser("apply").set_defaults(func=migrate_apply)
-
     # MONITOR
     monitor = subparsers.add_parser("monitor")
     monitor_sub = monitor.add_subparsers(dest="action", required=True)
@@ -265,6 +266,30 @@ def main():
     export = subparsers.add_parser("export")
     export.add_argument("module", choices=["gitlogger", "lms"])
     export.set_defaults(func=export_run)
+
+    # UPLOAD
+    upload = subparsers.add_parser("upload", help="Upload .xlsx tables")
+    source_group = upload.add_mutually_exclusive_group(required=True)
+    source_group.add_argument("--file", help="Path to single file")
+    source_group.add_argument("--dir",
+                              help="Path to directory for batch upload")
+    upload.add_argument("--dest", default="/", help="Destination folder")
+    upload.add_argument("--name", help="Custom name (for --file only)")
+    upload.add_argument("--overwrite", action="store_true", default=False,
+                        help="Overwrite existing files")
+    upload.add_argument("--url",
+                        default=os.environ.get("NEXTCLOUD_URL",
+                                               "http://localhost"),
+                        help="Nextcloud URL")
+    upload.add_argument("--username",
+                        default=os.environ.get("NEXTCLOUD_ADMIN_USER",
+                                               "admin"),
+                        help="Admin username")
+    upload.add_argument("--password",
+                        default=os.environ.get("NEXTCLOUD_ADMIN_PASSWORD",
+                                               "super_secure_password"),
+                        help="Admin password")
+    upload.set_defaults(func=upload_run)
 
     args = parser.parse_args()
     args.func(args)
