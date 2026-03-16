@@ -6,6 +6,8 @@ import os
 
 from scripts.upload_xlsx import upload_batch
 
+from scripts.users_from_csv import create_users_from_csv, delete_users_from_csv
+
 
 def print_output(data, fmt="text"):
     if fmt == "json":
@@ -83,6 +85,43 @@ def users_delete(args):
         "username": args.user,
         "status": "deleted"
     }, args.output)
+
+
+def users_csv_create(args):
+    # users csv-create [csv_file] --flags
+    print(f"Starting csv user creation from: {args.csv_file}")
+    print(f"Target: {args.url} (User: {args.username})")
+
+    result = create_users_from_csv(
+        args.csv_file,
+        args.url,
+        args.username,
+        args.password
+    )
+
+    # Если в результате есть ошибки уровня скрипта (не API), выводим их
+    if "error" in result:
+        error(result["error"])
+
+    success(result, args.output)
+
+
+def users_csv_delete(args):
+    # users csv-delete [csv_file] --flags
+    print(f"Starting csv user deletion based on: {args.csv_file}")
+    print(f"Target: {args.url} (User: {args.username})")
+
+    result = delete_users_from_csv(
+        args.csv_file,
+        args.url,
+        args.username,
+        args.password
+    )
+
+    if "error" in result:
+        error(result["error"])
+
+    success(result, args.output)
 
 
 def users_list(args):
@@ -226,6 +265,7 @@ def main():
     users = subparsers.add_parser("users")
     users_sub = users.add_subparsers(dest="action", required=True)
 
+    # Single user
     create = users_sub.add_parser("create")
     create.add_argument("user")
     create.set_defaults(func=users_create)
@@ -233,6 +273,39 @@ def main():
     delete = users_sub.add_parser("delete")
     delete.add_argument("user")
     delete.set_defaults(func=users_delete)
+
+    # Users from csv
+    csv_create = users_sub.add_parser("csv-create")
+    csv_create.add_argument("csv_file", help="Full path to CSV file")
+    csv_create.add_argument("--url",
+                            default=os.environ.get("NEXTCLOUD_URL",
+                                                   "http://localhost"),
+                            help="Nextcloud API URL")
+    csv_create.add_argument("--username",
+                            default=os.environ.get("NEXTCLOUD_ADMIN_USER",
+                                                   "admin"),
+                            help="Admin username")
+    csv_create.add_argument("--password",
+                            default=os.environ.get("NEXTCLOUD_ADMIN_PASSWORD",
+                                                   "super_secure_password"),
+                            help="Admin password")
+    csv_create.set_defaults(func=users_csv_create)
+
+    csv_delete = users_sub.add_parser("csv-delete")
+    csv_delete.add_argument("csv_file", help="Full path to CSV file")
+    csv_delete.add_argument("--url",
+                            default=os.environ.get("NEXTCLOUD_URL",
+                                                   "http://localhost"),
+                            help="Nextcloud API URL")
+    csv_delete.add_argument("--username",
+                            default=os.environ.get("NEXTCLOUD_ADMIN_USER",
+                                                   "admin"),
+                            help="Admin username")
+    csv_delete.add_argument("--password",
+                            default=os.environ.get("NEXTCLOUD_ADMIN_PASSWORD",
+                                                   "super_secure_password"),
+                            help="Admin password")
+    csv_delete.set_defaults(func=users_csv_delete)
 
     users_sub.add_parser("list").set_defaults(func=users_list)
 

@@ -1,0 +1,16 @@
+login,password,email,display_name,groups,subadmin_groups,quota,manager
+teacher_head,SecurePass2025!,head@uni.local,Ivan Petrov,"teachers,staff",teachers,unlimited,
+teacher_math,MathPass2025!,math@uni.local,Elena Sidorova,teachers,,10 GB,teacher_head
+student_01,StudPass01!,st01@uni.local,Alex One,"students,class_a",,1 GB,teacher_math
+student_02,StudPass02!,st02@uni.local,Maria Two,"students,class_a",,1 GB,teacher_math
+student_03,StudPass03!,st03@uni.local,John Three,"students,class_a",,1 GB,teacher_math
+student_04,StudPass04!,st04@uni.local,Lisa Four,"students,class_a",,1 GB,teacher_math
+student_05,StudPass05!,st05@uni.local,Tom Five,"students,class_b",,1 GB,teacher_math
+student_06,StudPass06!,st06@uni.local,Jerry Six,"students,class_b",,1 GB,teacher_math
+student_07,StudPass07!,st07@uni.local,Anna Seven,"students,class_b",,1 GB,teacher_math
+student_08,StudPass08!,st08@uni.local,Peter Eight,"students,class_b",,1 GB,teacher_math
+student_09,StudPass09!,st09@uni.local,Olga Nine,"students,class_c",,1 GB,teacher_math
+student_10,StudPass10!,st10@uni.local,Dmitry Ten,"students,class_c",,1 GB,teacher_math
+guest_vip,VipPass2025!,vip@guest.local,Mr. VIP,guests,,5 GB,teacher_head
+admin_local,AdminPass!,admin.loc@uni.local,Local Admin,"admin,staff",staff,unlimited,
+support_user,SuppPass!,support@uni.local,Tech Support,support,,50 GB,admin_local
