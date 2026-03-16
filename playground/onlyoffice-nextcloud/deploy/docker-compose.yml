@@ -114,7 +114,7 @@ services:
 
   windmill:
     container_name: windmill-server
-    image: ghcr.io/windmill-labs/windmill:latest
+    image: ghcr.io/windmill-labs/windmill:1.657.2
     restart: always
     ports:
       - "${WINDMILL_PORT}:8000"
@@ -130,7 +130,7 @@ services:
 
   windmill-worker:
     container_name: windmill-worker
-    image: ghcr.io/windmill-labs/windmill:latest
+    image: ghcr.io/windmill-labs/windmill:1.657.2
     restart: always
     command: windmill worker
     environment:
