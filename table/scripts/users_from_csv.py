@@ -1,6 +1,11 @@
 import csv
 import os
 import requests
+import logging
+
+logger = logging.getLogger(__name__)
+
+REQUEST_TIMEOUT = 30
 
 
 def _ensure_group_exists(session, api_base_url, group_name):
@@ -30,7 +35,8 @@ def _ensure_group_exists(session, api_base_url, group_name):
     try:
         payload = {"groupid": group_name}
         # Параметр format=json обязателен для удобного парсинга
-        resp = session.post(f"{url}?format=json", data=payload)
+        resp = session.post(f"{url}?format=json", data=payload,
+                            timeout=REQUEST_TIMEOUT)
 
         if resp.status_code == 200:
             data = resp.json()
@@ -44,12 +50,13 @@ def _ensure_group_exists(session, api_base_url, group_name):
             if code in [101, 102]:
                 return True, False
 
-            print(f"Warning: API message creating group '{group_name}': "
-                  f"{meta.get('message')}")
+            logger.warning(
+                f"API message creating group '{group_name}': {meta.
+                                                              get('message')}")
             return False, False
 
     except Exception as e:
-        print(f"Warning: Error checking group '{group_name}': {e}")
+        logger.error(f"Error checking group '{group_name}': {e}")
         return False, False
 
     return True, False
@@ -215,12 +222,14 @@ def create_users_from_csv(csv_path, api_base_url, admin_user, admin_pass):
                             sub_val.split(',') if s.strip()
                         ]
 
-                    # Поле 'manager' игнорируем при отправке, так как
+                    # Поле 'manager'  из csv файла игнорируем при отправке,
+                    # так как
                     # стандартный API Nextcloud его не поддерживает.
 
                     # --- ЭТАП 3: Отправка запроса ---
                     try:
-                        resp = session.post(users_url, data=payload)
+                        resp = session.post(users_url, data=payload,
+                                            timeout=REQUEST_TIMEOUT)
 
                         if resp.status_code == 200:
                             try:
@@ -332,7 +341,8 @@ def delete_users_from_csv(csv_path, api_base_url, admin_user, admin_pass):
                     )
 
                     try:
-                        resp = session.delete(delete_url)
+                        resp = session.delete(delete_url,
+                                              timeout=REQUEST_TIMEOUT)
 
                         if resp.status_code == 200:
                             try:
