@@ -35,35 +35,21 @@
 - `windmill` (Windmill server)
 - `windmill-worker` (исполнитель workflow)
 
-Также контейнер `nextcloud-init` автоматически включает в Nextcloud приложения:
+Далее настройка OAuth-подключения в Windmill:
 
-- `oauth2`
-- `webhook_listeners`
-- `forms`
-- `integration_windmill`
-
-Проверка, что приложения в Nextcloud активированы:
-```bash
-cd playground/onlyoffice-nextcloud/deploy
-docker compose exec app php /var/www/html/occ app:list | grep -E "webhook_listeners|integration_windmill|forms|oauth2"
-```
-
-Далее настройка OAuth-подключения в Windmill (рабочая схема для Docker):
-
-1. Откройте Windmill: `http://localhost:8000` (или порт из `WINDMILL_PORT`).
+1. Откройте Windmill.
 2. Войдите в workspace admin.
 3. Перейдите `Settings -> Workspace -> Native Triggers`.
-4. Для интеграции Nextcloud укажите `Nextcloud base URL` как `http://nginx-server`.
-5. Вставьте `Client ID` и `Client secret` из Nextcloud OAuth-клиента и нажмите `Save configuration`.
+4. Для интеграции Nextcloud укажите `Nextcloud base URL`.
+5. Для получения `Client ID` и `Client secret` необходимо выполнить скрипт:
+```
+chmod +x ./create_windmill_oauth.sh
+./create_windmill_oauth.sh
+```
+6. Вставьте `Client ID` и `Client secret` из Nextcloud OAuth-клиента и нажмите `Save configuration`.
 6. Нажмите `Connect`.
-7. Откроется URL вида `http://nginx-server/apps/oauth2/authorize?...`; в браузере замените только хост на `localhost:8080`.
-8. Подтвердите доступ учеткой Nextcloud и дождитесь возврата в Windmill.
-9. Убедитесь, что в интерфейсе Windmill статус подключения стал `Connected`.
-
-Почему это нужно:
-
-- `nginx-server` доступен из контейнера Windmill (нужен для backend обмена `code -> token`).
-- `localhost:8080` доступен из браузера на хосте (нужен для шага авторизации пользователя).
+7. Подтвердите доступ учеткой Nextcloud и дождитесь возврата в Windmill.
+8. Убедитесь, что в интерфейсе Windmill статус подключения стал `Connected`.
 
 Проверка сервисов Docker:
 ```bash
