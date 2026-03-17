@@ -117,7 +117,7 @@ services:
       - "${WINDMILL_PORT}:8000"
     environment:
       - DATABASE_URL=postgres://${WINDMILL_DB_USER}:${WINDMILL_DB_PASSWORD}@windmill-db:5432/windmill?sslmode=disable
-      - BASE_URL=http://localhost:${WINDMILL_PORT}
+      - BASE_URL=http://${NEXTCLOUD_HOST}:${WINDMILL_PORT}
       - RUST_LOG=info
     extra_hosts:
       - "${NEXTCLOUD_HOST:-nextcloud.local}:host-gateway"
@@ -134,7 +134,7 @@ services:
     command: windmill worker
     environment:
       - DATABASE_URL=postgres://${WINDMILL_DB_USER}:${WINDMILL_DB_PASSWORD}@windmill-db:5432/windmill?sslmode=disable
-      - BASE_URL=http://localhost:${WINDMILL_PORT}
+      - BASE_URL=http://${NEXTCLOUD_HOST}:${WINDMILL_PORT}
       - RUST_LOG=info
     extra_hosts:
       - "${NEXTCLOUD_HOST:-nextcloud.local}:host-gateway"
