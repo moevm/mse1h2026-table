@@ -125,12 +125,30 @@ def users_csv_delete(args):
 
 
 def users_list(args):
-    # users list
     from scripts.nextcloud_api import get_nextcloud_users, get_nextcloud_user_details
+    import os
+    from pathlib import Path
+    from scripts.load_env import load_env_from_file
 
-    base_url = "http://nextcloud.local:8080"
-    admin_user = "admin"  
-    admin_pass = "super_secure_password"  
+    load_env_from_file(Path(__file__).parent.parent / "playground" / "onlyoffice-nextcloud" / "deploy" / ".env")
+
+    base_url = os.environ.get("NEXTCLOUD_URL")
+
+    if not base_url:
+        host = os.environ.get("NEXTCLOUD_HOST")
+        port = os.environ.get("NEXTCLOUD_PORT")
+        if host and port:
+            base_url = f"http://{host}:{port}"
+        elif host:
+            base_url = f"http://{host}"
+        else:
+            error("NEXTCLOUD_URL или NEXTCLOUD_HOST не заданы в .env")
+
+    admin_user = os.environ.get("NEXTCLOUD_ADMIN_USER")
+    admin_pass = os.environ.get("NEXTCLOUD_ADMIN_PASSWORD")
+
+    if not all([base_url, admin_user, admin_pass]):
+        error("NEXTCLOUD_URL (или HOST/PORT), NEXTCLOUD_ADMIN_USER и NEXTCLOUD_ADMIN_PASSWORD должны быть заданы в .env")
 
     try:
         users = get_nextcloud_users(base_url, admin_user, admin_pass)
@@ -198,6 +216,7 @@ def users_list(args):
                 users_list.append(details)
             else:
                 users_list.append(u)
+                
         success({"users": users_list}, args.output)
 
     except Exception as e:
