@@ -126,16 +126,28 @@ def users_csv_delete(args):
 
 def users_list(args):
     # users list
-    from scripts.nextcloud_api import get_nextcloud_users
+    from scripts.nextcloud_api import get_nextcloud_users, get_nextcloud_user_details
 
     base_url = "http://nextcloud.local:8080"
     admin_user = "admin"  
-    admin_pass = "super_secure_password" 
-    
+    admin_pass = "super_secure_password"  
+
     try:
         users = get_nextcloud_users(base_url, admin_user, admin_pass)
-        users_list = [{"username": u} for u in users]
+
+        if getattr(args, "prefix", None):
+            users = [u for u in users if u.startswith(args.prefix)]
+
+        if getattr(args, "details", False):
+            users_list = []
+            for u in users:
+                details = get_nextcloud_user_details(base_url, admin_user, admin_pass, u)
+                users_list.append(details)
+        else:
+            users_list = users
+
         success({"users": users_list}, args.output)
+
     except Exception as e:
         error(f"Failed to fetch users: {e}")
 
@@ -312,7 +324,10 @@ def main():
                             help="Admin password")
     csv_delete.set_defaults(func=users_csv_delete)
 
-    users_sub.add_parser("list").set_defaults(func=users_list)
+    list_parser = users_sub.add_parser("list")
+    list_parser.add_argument("--prefix", help="Filter users by username prefix", default=None)
+    list_parser.add_argument("--details", action="store_true", help="Show detailed user info")
+    list_parser.set_defaults(func=users_list)
 
     # BACKUP
     backup = subparsers.add_parser("backup")
