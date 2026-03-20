@@ -135,33 +135,33 @@ TODO
 - Показать всех пользователей (только логины):
   ```bash
   python manage.py users list
-  
+  ```
 
 - Показать всех пользователей с подробностями (email, группы, квота):
-  
+  ```
   python manage.py users list --details
-  
+  ```
 
 #### Фильтрация пользователей
 
 Для гибкой фильтрации используйте флаг --filter <поле> <режим> <значение>. Можно указывать несколько фильтров подряд.
 
 - По username (начинается с 'adm'):
-  
+  ```
   python manage.py users list --filter username prefix adm
-  
+  ```
 - По email (содержит 'example.com'):
-  
+  ```
   python manage.py users list --filter email contains example.com --details
-  
+  ```
 - По группе (точное совпадение 'admin'):
-  
+  ```
   python manage.py users list --filter group exact admin --details
-  
+  ```
 - Комбинированные фильтры:
-  
+  ```
   python manage.py users list --filter username prefix adm --filter email contains mail.ru --details
-  
+  ```
 
 #### Описание фильтров
 - <поле>: username, email, group
