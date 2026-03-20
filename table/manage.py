@@ -126,13 +126,18 @@ def users_csv_delete(args):
 
 def users_list(args):
     # users list
-    success({
-        "users": [
-            {"username": "admin"},
-            {"username": "student1"},
-            {"username": "student2"}
-        ]
-    }, args.output)
+    from scripts.nextcloud_api import get_nextcloud_users
+
+    base_url = "http://nextcloud.local:8080"
+    admin_user = "admin"  
+    admin_pass = "super_secure_password" 
+    
+    try:
+        users = get_nextcloud_users(base_url, admin_user, admin_pass)
+        users_list = [{"username": u} for u in users]
+        success({"users": users_list}, args.output)
+    except Exception as e:
+        error(f"Failed to fetch users: {e}")
 
 
 # BACKUP

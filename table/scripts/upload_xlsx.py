@@ -137,8 +137,7 @@ def upload_batch(config, file_path=None, dir_path=None,
 
         # ОПТИМИЗАЦИЯ: Проверяем/создаем директорию один раз перед циклом
         user = config.get('user')
-        dav_url = f"{config.get('url').
-                     rstrip('/')}/remote.php/dav/files/{user}"
+        dav_url = f"{config.get('url').rstrip('/')}/remote.php/dav/files/{user}"
         if not _ensure_cloud_directory(session, dav_url, dest):
             return {"error": f"Не удалось подготовить директорию {dest}"}
 
