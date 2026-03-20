@@ -13,9 +13,9 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       # чтобы Nextcloud адекватно жил за nginx
       - TRUSTED_PROXIES=nginx-server
-      - OVERWRITEHOST=localhost
+      - OVERWRITEHOST=${NEXTCLOUD_HOST}:${NEXTCLOUD_PORT}
       - OVERWRITEPROTOCOL=http
-      - OVERWRITECLIURL=http://nginx-server
+      - OVERWRITECLIURL=http://${NEXTCLOUD_HOST}:${NEXTCLOUD_PORT}
     volumes:
       - app_data:/var/www/html
     depends_on:
@@ -48,7 +48,7 @@ services:
     image: nginx:alpine
     restart: always
     ports:
-      - "${NEXTCLOUD_PORT}:80"
+      - "${NEXTCLOUD_PORT:-8080}:80"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro,Z
       - app_data:/var/www/html:ro
@@ -72,24 +72,82 @@ services:
 
         php /var/www/html/occ app:install onlyoffice || php /var/www/html/occ app:enable onlyoffice;
 
-        php /var/www/html/occ config:app:set onlyoffice DocumentServerUrl --value='http://localhost/onlyoffice/';
+        php /var/www/html/occ config:app:set onlyoffice DocumentServerUrl --value='http://${NEXTCLOUD_HOST}:${NEXTCLOUD_PORT}/onlyoffice/';
         php /var/www/html/occ config:app:set onlyoffice DocumentServerInternalUrl --value='http://onlyoffice-document-server/';
         php /var/www/html/occ config:app:set onlyoffice StorageUrl --value='http://nginx-server/';
         php /var/www/html/occ config:app:set onlyoffice jwt_secret --value='${JWT_SECRET}';
 
-        php /var/www/html/occ config:system:set overwrite.cli.url --value='http://nginx-server' --type=string;
-        php /var/www/html/occ config:system:set overwritehost --value='localhost' --type=string;
+        php /var/www/html/occ config:system:set overwrite.cli.url --value='http://${NEXTCLOUD_HOST}:${NEXTCLOUD_PORT}' --type=string;
+        php /var/www/html/occ config:system:set overwritehost --value='${NEXTCLOUD_HOST}:${NEXTCLOUD_PORT}' --type=string;
         php /var/www/html/occ config:system:set overwriteprotocol --value='http' --type=string;
         php /var/www/html/occ config:system:set trusted_proxies 0 --value='nginx-server' --type=string;
-        php /var/www/html/occ config:system:set trusted_domains 0 --value='localhost' --type=string;
+        php /var/www/html/occ config:system:set trusted_domains 0 --value='${NEXTCLOUD_HOST}:${NEXTCLOUD_PORT}' --type=string;
         php /var/www/html/occ config:system:set trusted_domains 1 --value='nginx-server' --type=string;
 
-        echo 'ONLYOFFICE configured OK';
+        php /var/www/html/occ app:enable oauth2;
+        php /var/www/html/occ app:install webhook_listeners || php /var/www/html/occ app:enable webhook_listeners;
+        php /var/www/html/occ app:install forms || php /var/www/html/occ app:enable forms;
+        php /var/www/html/occ app:install integration_windmill || php /var/www/html/occ app:enable integration_windmill;
+
+        echo 'ONLYOFFICE and Windmill integration apps configured OK';
       "
     restart: "no"
+
+  windmill-db:
+    container_name: windmill-db
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_DB: windmill
+      POSTGRES_USER: ${WINDMILL_DB_USER}
+      POSTGRES_PASSWORD: ${WINDMILL_DB_PASSWORD}
+    volumes:
+      - windmill_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${WINDMILL_DB_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  windmill:
+    container_name: windmill-server
+    image: ghcr.io/windmill-labs/windmill:1.657.2
+    restart: always
+    ports:
+      - "${WINDMILL_PORT}:8000"
+    environment:
+      - DATABASE_URL=postgres://${WINDMILL_DB_USER}:${WINDMILL_DB_PASSWORD}@windmill-db:5432/windmill?sslmode=disable
+      - BASE_URL=http://${NEXTCLOUD_HOST}:${WINDMILL_PORT}
+      - RUST_LOG=info
+    extra_hosts:
+      - "${NEXTCLOUD_HOST:-nextcloud.local}:host-gateway"
+    depends_on:
+      windmill-db:
+        condition: service_healthy
+    volumes:
+      - windmill_worker_logs:/tmp/windmill
+
+  windmill-worker:
+    container_name: windmill-worker
+    image: ghcr.io/windmill-labs/windmill:1.657.2
+    restart: always
+    command: windmill worker
+    environment:
+      - DATABASE_URL=postgres://${WINDMILL_DB_USER}:${WINDMILL_DB_PASSWORD}@windmill-db:5432/windmill?sslmode=disable
+      - BASE_URL=http://${NEXTCLOUD_HOST}:${WINDMILL_PORT}
+      - RUST_LOG=info
+    extra_hosts:
+      - "${NEXTCLOUD_HOST:-nextcloud.local}:host-gateway"
+    depends_on:
+      windmill-db:
+        condition: service_healthy
+    volumes:
+      - windmill_worker_logs:/tmp/windmill
 
 volumes:
   db_data:
   document_data:
   document_log:
   app_data:
+  windmill_db_data:
+  windmill_worker_logs:
