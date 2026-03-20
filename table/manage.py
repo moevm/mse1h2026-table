@@ -138,14 +138,66 @@ def users_list(args):
         if getattr(args, "prefix", None):
             users = [u for u in users if u.startswith(args.prefix)]
 
-        if getattr(args, "details", False):
-            users_list = []
-            for u in users:
+        need_details = bool(args.filter) or getattr(args, "details", False)
+        users_list = []
+        for u in users:
+            details = None
+            if need_details:
                 details = get_nextcloud_user_details(base_url, admin_user, admin_pass, u)
-                users_list.append(details)
-        else:
-            users_list = users
 
+            passed = True
+            if args.filter:
+                for field, mode, value in args.filter:
+                    v = None
+                    if field == "username":
+                        v = u if not details else details.get("username")
+                    elif field == "email":
+                        v = details.get("email") if details else None
+                    elif field == "group":
+                        v = details.get("groups") if details else []
+                    else:
+                        passed = False
+                        break
+                    
+                    if mode == "contains":
+                        if field == "group":
+                            if value not in (v or []):
+                                passed = False
+                                break
+                        elif not v or value not in v:
+                            passed = False
+                            break
+
+                    elif mode == "prefix":
+                        if field == "group":
+                            if not any(g.startswith(value) for g in (v or [])):
+                                passed = False
+                                break
+                        elif not v or not v.startswith(value):
+                            passed = False
+                            break
+
+                    elif mode == "exact":
+                        if field == "group":
+                            if value not in (v or []):
+                                passed = False
+                                break
+                        elif not v or v != value:
+                            passed = False
+                            break
+                    else:
+                        passed = False
+                        break
+
+            if not passed:
+                continue
+
+            if getattr(args, "details", False):
+                if not details:
+                    details = get_nextcloud_user_details(base_url, admin_user, admin_pass, u)
+                users_list.append(details)
+            else:
+                users_list.append(u)
         success({"users": users_list}, args.output)
 
     except Exception as e:
@@ -327,6 +379,11 @@ def main():
     list_parser = users_sub.add_parser("list")
     list_parser.add_argument("--prefix", help="Filter users by username prefix", default=None)
     list_parser.add_argument("--details", action="store_true", help="Show detailed user info")
+    list_parser.add_argument(
+        "--filter", nargs=3, action="append",
+        metavar=("FIELD", "MODE", "VALUE"),
+        help="Universal filter: --filter <field> <mode> <value>. Mode: contains|prefix|exact. Field: username|email|group"
+    )
     list_parser.set_defaults(func=users_list)
 
     # BACKUP
