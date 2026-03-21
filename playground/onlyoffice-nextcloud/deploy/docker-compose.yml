@@ -72,7 +72,7 @@ services:
 
         php /var/www/html/occ app:install onlyoffice || php /var/www/html/occ app:enable onlyoffice;
 
-        php /var/www/html/occ config:app:set onlyoffice DocumentServerUrl --value='http://${NEXTCLOUD_HOST}:${NEXTCLOUD_PORT}/onlyoffice/';
+        php /var/www/html/occ config:app:set onlyoffice DocumentServerUrl --value='http://${NEXTCLOUD_HOST}:${NEXTCLOUD_PORT}/ds-vpath/';
         php /var/www/html/occ config:app:set onlyoffice DocumentServerInternalUrl --value='http://onlyoffice-document-server/';
         php /var/www/html/occ config:app:set onlyoffice StorageUrl --value='http://nginx-server/';
         php /var/www/html/occ config:app:set onlyoffice jwt_secret --value='${JWT_SECRET}';
