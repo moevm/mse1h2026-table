@@ -95,14 +95,14 @@ services:
 
   windmill-db:
     container_name: windmill-db
-    image: postgres:16
+    image: postgres:18
     restart: always
     environment:
       POSTGRES_DB: windmill
       POSTGRES_USER: ${WINDMILL_DB_USER}
       POSTGRES_PASSWORD: ${WINDMILL_DB_PASSWORD}
     volumes:
-      - windmill_db_data:/var/lib/postgresql/data
+      - windmill_db_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${WINDMILL_DB_USER}"]
       interval: 10s

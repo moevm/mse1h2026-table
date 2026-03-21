@@ -159,7 +159,8 @@ if __name__ == "__main__":
     example = os.path.join(os.path.dirname(__file__), "example_upload.xlsx")
 
     if os.path.exists(example):
-        print(upload_batch(test_config, file_path=example,
-                           dest="/Test/", overwrite=False))
+        print(upload_batch(
+            test_config, file_path=example, dest="/Test/", overwrite=False
+        ))
     else:
         print(f"Для теста создайте файл {example}")
