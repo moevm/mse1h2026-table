@@ -35,6 +35,12 @@ def now():
     return datetime.datetime.now().isoformat()
 
 
+def add_nextcloud_args(parser):
+    parser.add_argument("--url", default="http://localhost:8080", help="Nextcloud URL")
+    parser.add_argument("--username", default="admin", help="Admin username")
+    parser.add_argument("--password", default="super_secure_password", help="Admin password")
+
+
 # DEPLOY
 
 def deploy_up(args):
@@ -125,27 +131,22 @@ def users_csv_delete(args):
 
 
 def users_list(args):
-    from scripts.nextcloud_api import get_nextcloud_users, \
-        get_nextcloud_user_details
+    from scripts.nextcloud_client import NextcloudClient
 
-    base_url = args.url
-    admin_user = args.username
-    admin_pass = args.password
+    client = NextcloudClient(args.url, args.username, args.password)
 
     try:
-        users = get_nextcloud_users(base_url, admin_user, admin_pass)
+        users = client.get_users()
 
         if getattr(args, "prefix", None):
             users = [u for u in users if u.startswith(args.prefix)]
 
         need_details = bool(args.filter) or getattr(args, "details", False)
-        users_list = []
+        result = []
         for u in users:
             details = None
             if need_details:
-                details = get_nextcloud_user_details(
-                    base_url, admin_user, admin_pass, u
-                )
+                details = client.get_user_details(u)
 
             passed = True
             if args.filter:
@@ -169,7 +170,6 @@ def users_list(args):
                         elif not v or value not in v:
                             passed = False
                             break
-
                     elif mode == "prefix":
                         if field == "group":
                             if not any(g.startswith(value) for g in (v or [])):
@@ -178,7 +178,6 @@ def users_list(args):
                         elif not v or not v.startswith(value):
                             passed = False
                             break
-
                     elif mode == "exact":
                         if field == "group":
                             if value not in (v or []):
@@ -196,14 +195,12 @@ def users_list(args):
 
             if getattr(args, "details", False):
                 if not details:
-                    details = get_nextcloud_user_details(
-                        base_url, admin_user, admin_pass, u
-                    )
-                users_list.append(details)
+                    details = client.get_user_details(u)
+                result.append(details)
             else:
-                users_list.append(u)
+                result.append(u)
 
-        success({"users": users_list}, args.output)
+        success({"users": result}, args.output)
 
     except Exception as e:
         error(f"Failed to fetch users: {e}")
@@ -371,6 +368,7 @@ def main():
         help="Admin password")
     csv_delete.set_defaults(func=users_csv_delete)
 
+    # List users
     list_parser = users_sub.add_parser("list")
     list_parser.add_argument("--prefix", help="Filter by prefix", default=None)
     list_parser.add_argument("--details", action="store_true",
@@ -382,14 +380,7 @@ def main():
              "Mode: contains|prefix|exact. Field: username|email|group"
     )
     
-    list_parser.add_argument("--url", default=os.environ.get(
-        "NEXTCLOUD_URL", "http://nextcloud.local:8080"), help="Nextcloud API URL")
-    list_parser.add_argument("--username", default=os.environ.get(
-        "NEXTCLOUD_ADMIN_USER", "admin"), help="Admin username")
-    list_parser.add_argument("--password", default=os.environ.get(
-        "NEXTCLOUD_ADMIN_PASSWORD", "super_secure_password"),
-        help="Admin password")
-    
+    add_nextcloud_args(list_parser)
     list_parser.set_defaults(func=users_list)
 
     # BACKUP
