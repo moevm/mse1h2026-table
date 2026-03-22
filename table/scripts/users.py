@@ -1,6 +1,7 @@
 from scripts.users_from_csv import create_users_from_csv, delete_users_from_csv
 from scripts.utils import success, error, now
 
+
 # USERS
 
 def users_create(args):

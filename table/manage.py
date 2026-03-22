@@ -11,6 +11,7 @@ from scripts.users import (
     users_list,
 )
 
+
 def add_nextcloud_args(parser):
     parser.add_argument(
         "--url", default="http://localhost:8080", help="Nextcloud URL"
