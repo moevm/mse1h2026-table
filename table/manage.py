@@ -35,9 +35,17 @@ def now():
 
 
 def add_nextcloud_args(parser):
-    parser.add_argument("--url", default="http://localhost:8080", help="Nextcloud URL")
-    parser.add_argument("--username", default="admin", help="Admin username")
-    parser.add_argument("--password", default="super_secure_password", help="Admin password")
+    parser.add_argument(
+        "--url", default="http://localhost:8080", help="Nextcloud URL"
+    )
+
+    parser.add_argument(
+        "--username", default="admin", help="Admin username"
+    )
+
+    parser.add_argument(
+        "--password", default="super_secure_password", help="Admin password"
+    )
 
 
 # DEPLOY
