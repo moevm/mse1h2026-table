@@ -148,7 +148,12 @@ def users_list(args):
         if getattr(args, "prefix", None):
             users = [u for u in users if u.startswith(args.prefix)]
 
-        need_details = bool(args.filter) or getattr(args, "details", False)
+        need_details = getattr(args, "details", False)
+        if args.filter:
+            need_details = need_details or any(
+                field != "username" for field, _, _ in args.filter
+            )
+
         result = []
         for u in users:
             details = None
@@ -159,8 +164,9 @@ def users_list(args):
             if args.filter:
                 for field, mode, value in args.filter:
                     v = None
+
                     if field == "username":
-                        v = u if not details else details.get("username")
+                        v = u
                     elif field == "email":
                         v = details.get("email") if details else None
                     elif field == "group":
@@ -177,6 +183,7 @@ def users_list(args):
                         elif not v or value not in v:
                             passed = False
                             break
+
                     elif mode == "prefix":
                         if field == "group":
                             if not any(g.startswith(value) for g in (v or [])):
@@ -185,6 +192,7 @@ def users_list(args):
                         elif not v or not v.startswith(value):
                             passed = False
                             break
+
                     elif mode == "exact":
                         if field == "group":
                             if value not in (v or []):
@@ -193,6 +201,7 @@ def users_list(args):
                         elif not v or v != value:
                             passed = False
                             break
+
                     else:
                         passed = False
                         break
