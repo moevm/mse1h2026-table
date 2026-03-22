@@ -210,8 +210,6 @@ def users_list(args):
                 continue
 
             if getattr(args, "details", False):
-                if not details:
-                    details = client.get_user_details(u)
                 result.append(details)
             else:
                 result.append(u)
