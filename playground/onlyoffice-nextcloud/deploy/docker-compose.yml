@@ -1,7 +1,7 @@
 services:
   app:
     container_name: app-server
-    image: nextcloud:fpm
+    image: nextcloud:33.0-fpm
     restart: always
     environment:
       - NEXTCLOUD_ADMIN_USER=${NEXTCLOUD_ADMIN_USER}
@@ -11,11 +11,6 @@ services:
       - POSTGRES_DB=${POSTGRES_DB:-nextcloud}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      # чтобы Nextcloud адекватно жил за nginx
-      - TRUSTED_PROXIES=nginx-server
-      - OVERWRITEHOST=${NEXTCLOUD_HOST}:${NEXTCLOUD_PORT}
-      - OVERWRITEPROTOCOL=http
-      - OVERWRITECLIURL=http://${NEXTCLOUD_HOST}:${NEXTCLOUD_PORT}
     volumes:
       - app_data:/var/www/html
     depends_on:
@@ -35,7 +30,7 @@ services:
 
   onlyoffice-document-server:
     container_name: onlyoffice-document-server
-    image: onlyoffice/documentserver:latest
+    image: onlyoffice/documentserver:9.3
     restart: always
     environment:
       - JWT_SECRET=${JWT_SECRET}
@@ -45,7 +40,7 @@ services:
 
   nginx:
     container_name: nginx-server
-    image: nginx:alpine
+    image: nginx:stable-alpine
     restart: always
     ports:
       - "${NEXTCLOUD_PORT:-8080}:80"
@@ -56,7 +51,7 @@ services:
       - app
 
   nextcloud-init:
-    image: nextcloud:fpm
+    image: nextcloud:33.0-fpm
     depends_on:
       - app
       - onlyoffice-document-server
@@ -76,13 +71,14 @@ services:
         php /var/www/html/occ config:app:set onlyoffice DocumentServerInternalUrl --value='http://onlyoffice-document-server/';
         php /var/www/html/occ config:app:set onlyoffice StorageUrl --value='http://nginx-server/';
         php /var/www/html/occ config:app:set onlyoffice jwt_secret --value='${JWT_SECRET}';
+        php /var/www/html/occ config:app:set onlyoffice customizationForcesave --value=true
 
         php /var/www/html/occ config:system:set overwrite.cli.url --value='http://${NEXTCLOUD_HOST}:${NEXTCLOUD_PORT}' --type=string;
         php /var/www/html/occ config:system:set overwritehost --value='${NEXTCLOUD_HOST}:${NEXTCLOUD_PORT}' --type=string;
         php /var/www/html/occ config:system:set overwriteprotocol --value='http' --type=string;
         php /var/www/html/occ config:system:set trusted_proxies 0 --value='nginx-server' --type=string;
-        php /var/www/html/occ config:system:set trusted_domains 0 --value='${NEXTCLOUD_HOST}:${NEXTCLOUD_PORT}' --type=string;
-        php /var/www/html/occ config:system:set trusted_domains 1 --value='nginx-server' --type=string;
+        php /var/www/html/occ config:system:set trusted_domains 0 --value='nginx-server' --type=string;
+        php /var/www/html/occ config:system:set trusted_domains 1 --value='${NEXTCLOUD_HOST}:${NEXTCLOUD_PORT}' --type=string;
 
         php /var/www/html/occ app:enable oauth2;
         php /var/www/html/occ app:install webhook_listeners || php /var/www/html/occ app:enable webhook_listeners;
