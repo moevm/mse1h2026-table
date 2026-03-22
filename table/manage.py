@@ -127,32 +127,10 @@ def users_csv_delete(args):
 def users_list(args):
     from scripts.nextcloud_api import get_nextcloud_users, \
         get_nextcloud_user_details
-    import os
-    from pathlib import Path
-    from scripts.load_env import load_env_from_file
 
-    env_path = Path(__file__).parent.parent / "playground" / \
-        "onlyoffice-nextcloud" / "deploy" / ".env"
-    load_env_from_file(env_path)
-
-    base_url = os.environ.get("NEXTCLOUD_URL")
-
-    if not base_url:
-        host = os.environ.get("NEXTCLOUD_HOST")
-        port = os.environ.get("NEXTCLOUD_PORT")
-        if host and port:
-            base_url = f"http://{host}:{port}"
-        elif host:
-            base_url = f"http://{host}"
-        else:
-            error("NEXTCLOUD_URL или NEXTCLOUD_HOST не заданы в .env")
-
-    admin_user = os.environ.get("NEXTCLOUD_ADMIN_USER")
-    admin_pass = os.environ.get("NEXTCLOUD_ADMIN_PASSWORD")
-
-    if not all([base_url, admin_user, admin_pass]):
-        error("NEXTCLOUD_URL (или HOST/PORT), NEXTCLOUD_ADMIN_USER "
-              "и NEXTCLOUD_ADMIN_PASSWORD должны быть заданы в .env")
+    base_url = args.url
+    admin_user = args.username
+    admin_pass = args.password
 
     try:
         users = get_nextcloud_users(base_url, admin_user, admin_pass)
@@ -403,6 +381,15 @@ def main():
         help="Universal filter: <field> <mode> <value>. "
              "Mode: contains|prefix|exact. Field: username|email|group"
     )
+    
+    list_parser.add_argument("--url", default=os.environ.get(
+        "NEXTCLOUD_URL", "http://nextcloud.local:8080"), help="Nextcloud API URL")
+    list_parser.add_argument("--username", default=os.environ.get(
+        "NEXTCLOUD_ADMIN_USER", "admin"), help="Admin username")
+    list_parser.add_argument("--password", default=os.environ.get(
+        "NEXTCLOUD_ADMIN_PASSWORD", "super_secure_password"),
+        help="Admin password")
+    
     list_parser.set_defaults(func=users_list)
 
     # BACKUP
