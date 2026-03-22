@@ -51,8 +51,9 @@ def _ensure_group_exists(session, api_base_url, group_name):
                 return True, False
 
             logger.warning(
-                f"API message creating group '{group_name}': {meta.
-                                                              get('message')}")
+                f"API message creating group '{group_name}': "
+                f"{meta.get('message')}"
+            )
             return False, False
 
     except Exception as e:
@@ -402,4 +403,4 @@ if __name__ == "__main__":
         "http://localhost",
         "admin",
         "super_secure_password")
-        )
+    )

@@ -1,0 +1,35 @@
+import requests
+
+REQUEST_TIMEOUT = 30
+
+
+class NextcloudClient:
+    def __init__(self, base_url, username, password):
+        self.base_url = base_url.rstrip("/")
+        self.session = requests.Session()
+        self.session.auth = (username, password)
+        self.session.headers.update({
+            "OCS-APIRequest": "true",
+            "Accept": "application/json"
+        })
+
+    def get_users(self):
+        url = f"{self.base_url}/ocs/v1.php/cloud/users"
+        resp = self.session.get(url, timeout=REQUEST_TIMEOUT)
+        resp.raise_for_status()
+
+        return resp.json()["ocs"]["data"]["users"]
+
+    def get_user_details(self, username):
+        url = f"{self.base_url}/ocs/v1.php/cloud/users/{username}"
+        resp = self.session.get(url, timeout=REQUEST_TIMEOUT)
+
+        resp.raise_for_status()
+        data = resp.json()["ocs"]["data"]
+
+        return {
+            "username": data.get("id"),
+            "email": data.get("email"),
+            "groups": data.get("groups", []),
+            "quota": data.get("quota", {}),
+        }
