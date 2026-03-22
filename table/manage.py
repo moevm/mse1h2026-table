@@ -2,7 +2,6 @@ import argparse
 import sys
 import json
 import datetime
-import os
 
 from scripts.upload_xlsx import upload_batch
 
@@ -348,24 +347,12 @@ def main():
     # Users from csv
     csv_create = users_sub.add_parser("csv-create")
     csv_create.add_argument("csv_file", help="Full path to CSV file")
-    csv_create.add_argument("--url", default=os.environ.get(
-        "NEXTCLOUD_URL", "http://localhost"), help="Nextcloud API URL")
-    csv_create.add_argument("--username", default=os.environ.get(
-        "NEXTCLOUD_ADMIN_USER", "admin"), help="Admin username")
-    csv_create.add_argument("--password", default=os.environ.get(
-        "NEXTCLOUD_ADMIN_PASSWORD", "super_secure_password"),
-        help="Admin password")
+    add_nextcloud_args(csv_create)
     csv_create.set_defaults(func=users_csv_create)
 
     csv_delete = users_sub.add_parser("csv-delete")
     csv_delete.add_argument("csv_file", help="Full path to CSV file")
-    csv_delete.add_argument("--url", default=os.environ.get(
-        "NEXTCLOUD_URL", "http://localhost"), help="Nextcloud API URL")
-    csv_delete.add_argument("--username", default=os.environ.get(
-        "NEXTCLOUD_ADMIN_USER", "admin"), help="Admin username")
-    csv_delete.add_argument("--password", default=os.environ.get(
-        "NEXTCLOUD_ADMIN_PASSWORD", "super_secure_password"),
-        help="Admin password")
+    add_nextcloud_args(csv_delete)
     csv_delete.set_defaults(func=users_csv_delete)
 
     # List users
@@ -421,15 +408,8 @@ def main():
     source_group.add_argument("--dir", help="Path to directory for batch")
     upload.add_argument("--dest", default="/", help="Destination folder")
     upload.add_argument("--name", help="Custom name (for --file only)")
-    upload.add_argument("--overwrite", action="store_true", default=False,
-                        help="Overwrite existing files")
-    upload.add_argument("--url", default=os.environ.get(
-        "NEXTCLOUD_URL", "http://localhost"), help="Nextcloud URL")
-    upload.add_argument("--username", default=os.environ.get(
-        "NEXTCLOUD_ADMIN_USER", "admin"), help="Admin username")
-    upload.add_argument("--password", default=os.environ.get(
-        "NEXTCLOUD_ADMIN_PASSWORD", "super_secure_password"),
-        help="Admin password")
+    upload.add_argument("--overwrite", action="store_true", default=False)
+    add_nextcloud_args(upload)
     upload.set_defaults(func=upload_run)
 
     args = parser.parse_args()
