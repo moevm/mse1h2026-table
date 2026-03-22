@@ -374,7 +374,7 @@ def main():
         help="Universal filter: <field> <mode> <value>. "
              "Mode: contains|prefix|exact. Field: username|email|group"
     )
-    
+
     add_nextcloud_args(list_parser)
     list_parser.set_defaults(func=users_list)
 
