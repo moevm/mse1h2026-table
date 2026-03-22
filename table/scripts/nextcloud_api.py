@@ -13,7 +13,8 @@ def get_nextcloud_users(base_url, admin_user, admin_pass):
     }
 
     response = requests.get(
-        url, headers=headers, auth=HTTPBasicAuth(admin_user, admin_pass)
+        url, headers=headers, auth=HTTPBasicAuth(admin_user, admin_pass),
+        timeout=10
     )
     response.raise_for_status()
 
@@ -31,7 +32,8 @@ def get_nextcloud_user_details(base_url, admin_user, admin_pass, username):
     }
 
     response = requests.get(
-        url, headers=headers, auth=HTTPBasicAuth(admin_user, admin_pass)
+        url, headers=headers, auth=HTTPBasicAuth(admin_user, admin_pass),
+        timeout=10
     )
     response.raise_for_status()
 
