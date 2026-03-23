@@ -33,3 +33,28 @@ class NextcloudClient:
             "groups": data.get("groups", []),
             "quota": data.get("quota", {}),
         }
+
+    def create_user(
+        self, userid, password=None, email=None,
+        displayName=None, quota=None, groups=None
+    ):
+
+        url = f"{self.base_url}/ocs/v1.php/cloud/users"
+        payload = {"userid": userid}
+        if password:
+            payload["password"] = password
+        if email:
+            payload["email"] = email
+        if displayName:
+            payload["displayName"] = displayName
+        if quota:
+            payload["quota"] = quota
+        if groups:
+            payload["groups[]"] = groups
+
+        resp = self.session.post(url, data=payload, timeout=REQUEST_TIMEOUT)
+        resp.raise_for_status()
+
+        ocs = resp.json()["ocs"]["meta"]
+        if ocs["statuscode"] != 100:
+            raise Exception(f"{ocs['statuscode']}: {ocs['message']}")

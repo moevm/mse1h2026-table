@@ -503,6 +503,31 @@ def main():
     # Single user
     create = users_sub.add_parser("create")
     create.add_argument("user")
+    create.add_argument(
+        "--email", default=None,
+        help="User email"
+    )
+
+    create.add_argument(
+        "--display-name", dest="display_name",
+        default=None, help="Display name"
+    )
+
+    create.add_argument(
+        "--user-password", dest="user_password",
+        default=None, help="User password"
+    )
+
+    create.add_argument(
+        "--quota", default=None,
+        help="Storage quota (e.g. 1GB)"
+    )
+
+    create.add_argument(
+        "--groups", nargs="+", default=None,
+        help="Groups to add user to"
+    )
+    add_nextcloud_args(create)
     create.set_defaults(func=users_create)
 
     delete = users_sub.add_parser("delete")
