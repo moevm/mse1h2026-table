@@ -89,8 +89,6 @@ def users_csv_delete(args):
 
 
 def users_list(args):
-    from scripts.nextcloud_client import NextcloudClient
-
     client = NextcloudClient(args.url, args.username, args.password)
 
     try:
