@@ -10,20 +10,15 @@ def users_create(args):
 
     client = NextcloudClient(args.url, args.username, args.password)
 
-    payload = {"userid": args.user}
-    if args.email:
-        payload["email"] = args.email
-    if args.display_name:
-        payload["displayName"] = args.display_name
-    if args.user_password:
-        payload["password"] = args.user_password
-    if args.quota:
-        payload["quota"] = args.quota
-    if args.groups:
-        payload["groups"] = args.groups
-
     try:
-        client.create_user(**payload)
+        client.create_user(
+            userid=args.user,
+            email=args.email,
+            displayName=args.display_name,
+            password=args.user_password,
+            quota=args.quota,
+            groups=args.groups
+        )
         success({
             "username": args.user,
             "status": "created",
