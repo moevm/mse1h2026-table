@@ -58,3 +58,12 @@ class NextcloudClient:
         ocs = resp.json()["ocs"]["meta"]
         if ocs["statuscode"] != 100:
             raise Exception(f"{ocs['statuscode']}: {ocs['message']}")
+
+    def delete_user(self, username):
+        url = f"{self.base_url}/ocs/v1.php/cloud/users/{username}"
+        resp = self.session.delete(url, timeout=REQUEST_TIMEOUT)
+        resp.raise_for_status()
+
+        ocs = resp.json()["ocs"]["meta"]
+        if ocs["statuscode"] != 100:
+            raise Exception(f"{ocs['statuscode']}: {ocs['message']}")

@@ -532,6 +532,7 @@ def main():
 
     delete = users_sub.add_parser("delete")
     delete.add_argument("user")
+    add_nextcloud_args(delete)
     delete.set_defaults(func=users_delete)
 
     # Users from csv

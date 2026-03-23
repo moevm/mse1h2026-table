@@ -36,11 +36,19 @@ def users_create(args):
 
 def users_delete(args):
     # users delete [user]
-    print(f"[STUB] Deleting user: {args.user}")
-    success({
-        "username": args.user,
-        "status": "deleted"
-    }, args.output)
+
+    client = NextcloudClient(args.url, args.username, args.password)
+
+    try:
+        client.delete_user(args.user)
+        success({
+            "username": args.user,
+            "status": "deleted",
+            "timestamp": now()
+        }, args.output)
+
+    except Exception as e:
+        error(f"Failed to delete user '{args.user}': {e}")
 
 
 def users_csv_create(args):
