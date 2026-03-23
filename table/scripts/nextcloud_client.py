@@ -1,5 +1,6 @@
 import requests
 
+
 REQUEST_TIMEOUT = 30
 
 
@@ -41,15 +42,15 @@ class NextcloudClient:
 
         url = f"{self.base_url}/ocs/v1.php/cloud/users"
         payload = {"userid": userid}
-        if password:
+        if password is not None:
             payload["password"] = password
-        if email:
+        if email is not None:
             payload["email"] = email
-        if displayName:
+        if displayName is not None:
             payload["displayName"] = displayName
-        if quota:
+        if quota is not None:
             payload["quota"] = quota
-        if groups:
+        if groups is not None:
             payload["groups[]"] = groups
 
         resp = self.session.post(url, data=payload, timeout=REQUEST_TIMEOUT)
