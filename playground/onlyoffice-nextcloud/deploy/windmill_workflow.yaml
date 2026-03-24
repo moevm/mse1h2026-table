@@ -1,0 +1,173 @@
+summary: ""
+description: ""
+value:
+  modules:
+    - id: b
+      value:
+        lock: |-
+          # py: 3.12
+          certifi==2026.2.25
+          charset-normalizer==3.4.6
+          idna==3.11
+          requests==2.32.5
+          urllib3==2.6.3
+        type: rawscript
+        content: >-
+          import requests
+
+
+          def main(nextcloud: dict, formId: str, submissionId: int) -> dict:
+              base_url = nextcloud["baseUrl"].rstrip("/")
+              username = nextcloud["userId"]
+              password = nextcloud["token"]
+
+              url = f"{base_url}/ocs/v2.php/apps/forms/api/v3/forms/{formId}/submissions"
+              auth = (username, password)
+              params = {"format": "json"}
+              headers = {"OCS-APIRequest": "true"}
+
+              resp = requests.get(url, auth=auth, headers=headers, params=params)
+              if resp.status_code != 200:
+                  raise Exception(f"Failed to get submissions: {resp.status_code}")
+
+              data = resp.json()
+              submissions = data.get("ocs", {}).get("data", {}).get("submissions", [])
+              submission = next((s for s in submissions if s["id"] == submissionId), None)
+
+              if not submission:
+                  raise Exception(f"Submission with id {submissionId} not found")
+
+              return {"submission": submission}
+        language: python3
+        input_transforms:
+          formId:
+            expr: flow_input.event.form.id
+            type: javascript
+          nextcloud:
+            expr: flow_input.authentication.owner
+            type: javascript
+          submissionId:
+            expr: flow_input.event.submission.id
+            type: javascript
+      summary: Get submission
+    - id: d
+      value:
+        lock: |-
+          # py: 3.12
+          certifi==2026.2.25
+          charset-normalizer==3.4.6
+          et-xmlfile==2.0.0
+          idna==3.11
+          openpyxl==3.1.5
+          requests==2.32.5
+          urllib3==2.6.3
+        type: rawscript
+        content: >-
+          import requests
+
+          import openpyxl
+
+          from io import BytesIO
+
+          from datetime import datetime
+
+
+          def main(nextcloud_resource: dict, file_path: str, submission: dict):
+              base_url = nextcloud_resource["baseUrl"].rstrip("/")
+              username = nextcloud_resource["userId"]
+              password = nextcloud_resource["token"]
+
+              # Получение вопросов формы
+              form_id = submission.get("formId")
+              if not form_id:
+                  raise Exception("submission does not contain formId")
+
+              questions_url = f"{base_url}/ocs/v2.php/apps/forms/api/v3/forms/{form_id}"
+              auth = (username, password)
+              headers = {"OCS-APIRequest": "true"}
+              resp = requests.get(questions_url, auth=auth, headers=headers, params={"format": "json"})
+              if resp.status_code != 200:
+                  raise Exception(f"Failed to get form questions: {resp.status_code}")
+
+              data = resp.json()
+              try:
+                  questions = data["ocs"]["data"]["questions"]
+              except KeyError:
+                  raise Exception(f"Unexpected response structure: {data}")
+
+              # Скачивание
+              path = file_path.lstrip('/')
+              download_url = f"{base_url}/remote.php/dav/files/{username}/{path}"
+              resp = requests.get(download_url, auth=auth)
+              if resp.status_code != 200:
+                  raise Exception(f"Failed to download file: {resp.status_code}")
+
+              # Открытие таблицы
+              file_data = BytesIO(resp.content)
+              wb = openpyxl.load_workbook(file_data, data_only=False)
+              sheet = wb.active
+
+              # Следующая свободная строка
+              next_row = sheet.max_row + 1
+
+              # Данные пользователя и времени
+              user_id = submission.get("userId", "")
+              user_display = submission.get("userDisplayName", "")
+              timestamp = submission.get("timestamp")
+              if timestamp:
+                  dt = datetime.fromtimestamp(timestamp)
+                  timestamp_str = dt.strftime("%Y-%m-%d %H:%M:%S")
+              else:
+                  timestamp_str = ""
+
+              # Объединение ответов с мультвыбором в строку
+              answers_dict = {}
+              for ans in submission.get("answers", []):
+                  qid = ans["questionId"]
+                  text = ans.get("text", "")
+                  if text:
+                      if qid in answers_dict:
+                          answers_dict[qid] += f", {text}"
+                      else:
+                          answers_dict[qid] = text
+
+              # Ячейки 1-3 служебные, начиная с 4 – ответы
+              sheet.cell(row=next_row, column=1, value=user_id)
+              sheet.cell(row=next_row, column=2, value=user_display)
+              sheet.cell(row=next_row, column=3, value=timestamp_str)
+
+              for col_idx, question in enumerate(questions, start=4):
+                  qid = question["id"]
+                  value = answers_dict.get(qid, "")
+                  sheet.cell(row=next_row, column=col_idx, value=value)
+
+              # Сохранение и загрузка
+              output = BytesIO()
+              wb.save(output)
+              output.seek(0)
+
+              upload_url = f"{base_url}/remote.php/dav/files/{username}/{path}"
+              put_resp = requests.put(upload_url, data=output, auth=auth,
+                                      headers={"Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"})
+              if put_resp.status_code not in (200, 201, 204):
+                  raise Exception(f"Upload failed: {put_resp.status_code}")
+
+              return {"status": "success", "row": next_row, "file": file_path}
+        language: python3
+        input_transforms:
+          file_path:
+            type: static
+            value: /results.xlsx
+          submission:
+            expr: results.b.submission
+            type: javascript
+          nextcloud_resource:
+            expr: flow_input.authentication.owner
+            type: javascript
+      summary: append to XLSX
+schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  properties: {}
+  required: []
+  type: object
+
