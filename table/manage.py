@@ -88,10 +88,14 @@ def deploy_up(args):
     if not compose_file.exists():
         error(f"Не найден docker-compose.yml: {compose_file}")
 
-    run_command(["docker", "compose", "-f", str(compose_file), "up", "-d"], cwd=compose_dir)
+    run_command(["docker", "compose", "-f", str(compose_file),
+                "up", "-d"], cwd=compose_dir)
 
     success({
-        "services": ["app", "db", "onlyoffice-document-server", "nginx", "nextcloud-init"],
+        "services": [
+            "app", "db", "onlyoffice-document-server",
+            "nginx", "nextcloud-init"
+        ],
         "status": "running",
         "timestamp": now(),
         "env": args.env,
@@ -108,7 +112,8 @@ def deploy_down(args):
     if not compose_file.exists():
         error(f"Не найден docker-compose.yml: {compose_file}")
 
-    run_command(["docker", "compose", "-f", str(compose_file), "down"], cwd=compose_dir)
+    run_command(["docker", "compose", "-f",
+                str(compose_file), "down"], cwd=compose_dir)
 
     success({
         "status": "stopped",
@@ -184,7 +189,10 @@ def deploy_demo(args):
             ]
 
     def share_folder(share_type, share_with, permissions):
-        url = f"{base_url.rstrip('/')}/ocs/v2.php/apps/files_sharing/api/v1/shares?format=json"
+        url = (
+            f"{base_url.rstrip('/')}/ocs/v2.php/apps/files_sharing/"
+            "api/v1/shares?format=json"
+        )
         resp = requests.post(
             url,
             auth=(admin_user, admin_pass),
@@ -199,20 +207,36 @@ def deploy_demo(args):
         )
 
         if resp.status_code != 200:
-            return {"status": "error", "http_code": resp.status_code, "body": resp.text[:300]}
+            return {"status": "error", "http_code":
+                    resp.status_code, "body": resp.text[:300]}
 
         try:
             data = resp.json()
         except ValueError:
-            return {"status": "error", "reason": "Invalid JSON response from share API", "body": resp.text[:300]}
+            return {
+                "status": "error",
+                "reason": "Invalid JSON response from share API",
+                "body": resp.text[:300]
+            }
 
         meta = data.get("ocs", {}).get("meta", {})
         code = meta.get("statuscode")
         message = meta.get("message", "")
         if code in (100, 200):
-            return {"status": "shared", "permissions": permissions, "share_with": share_with, "message": message}
+            return {
+                "status": "shared",
+                "permissions": permissions,
+                "share_with": share_with,
+                "message": message
+            }
 
-        return {"status": "error", "code": code, "reason": message, "share_with": share_with, "permissions": permissions}
+        return {
+            "status": "error",
+            "code": code,
+            "reason": message,
+            "share_with": share_with,
+            "permissions": permissions
+        }
 
     print_section("DEPLOY DEMO")
     print_kv("nextcloud_url", base_url)
@@ -224,12 +248,19 @@ def deploy_demo(args):
         error(f"Не найден файл пользователей: {users_csv}")
 
     users_rows = read_users_csv(users_csv)
-    result_users = create_users_from_csv(str(users_csv), base_url, admin_user, admin_pass)
+    result_users = create_users_from_csv(
+        str(users_csv), base_url, admin_user, admin_pass
+    )
+
     if "error" in result_users:
         error(result_users["error"])
 
     created_set = set(result_users.get("created", []))
-    failed_map = {item.get("user"): item for item in result_users.get("failed", []) if item.get("user")}
+    failed_map = {
+        item.get("user"): item
+        for item in result_users.get("failed", [])
+        if item.get("user")
+    }
 
     print_section("USERS")
     print_kv("total", result_users.get("total"))
@@ -240,11 +271,18 @@ def deploy_demo(args):
     if result_users.get("failed"):
         print("Failed users:")
         for item in result_users["failed"]:
-            print(f"- {item.get('user')}: code={item.get('code')}, reason={item.get('reason')}")
+            print(
+                f"- {item.get('user')}: code={item.get('code')}, "
+                f"reason={item.get('reason')}"
+            )
 
     debug_users = []
     for row in users_rows:
-        role, permissions = resolve_role_and_permissions(row["login"], row["groups"])
+        role, permissions = resolve_role_and_permissions(
+            row["login"],
+            row["groups"]
+        )
+
         item = {
             "login": row["login"],
             "password": row["password"],
@@ -260,7 +298,10 @@ def deploy_demo(args):
     print_section("ROLES")
     for u in debug_users:
         if u["created"]:
-            print(f"- {u['login']}: {u['role']} ({permissions_text(u['permissions'])})")
+            print(
+                f"- {u['login']}: {u['role']} "
+                f"({permissions_text(u['permissions'])})"
+            )
 
     xlsx_files = sorted(scripts_dir.glob("*.xlsx"))
     if not xlsx_files:
@@ -271,7 +312,12 @@ def deploy_demo(args):
     for xlsx_file in xlsx_files:
         try:
             xlsx_upload = upload_batch(
-                config={"url": base_url, "user": admin_user, "pass": admin_pass},
+                config={
+                    "url": base_url,
+                    "user": admin_user,
+                    "pass": admin_pass
+                },
+
                 file_path=str(xlsx_file),
                 dest=f"/{folder_name}",
                 overwrite=True,
@@ -295,7 +341,12 @@ def deploy_demo(args):
         ("support", 1),
     ]:
         share_result = share_folder(1, group_name, permissions)
-        share_results.append({"group": group_name, "permissions": permissions, "result": share_result})
+        share_results.append({
+            "group": group_name,
+            "permissions": permissions,
+            "result": share_results
+        })
+
         if share_result.get("status") == "shared":
             print(f"- {group_name}: OK")
         else:
@@ -315,6 +366,7 @@ def deploy_demo(args):
         "shares": share_results,
         "tables": tables,
     }, args.output)
+
 
 # BACKUP
 
