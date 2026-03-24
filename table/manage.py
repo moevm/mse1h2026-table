@@ -43,35 +43,6 @@ def load_config(args):
     except yaml.YAMLError:
         error("Invalid YAML file")
 
-    # Проверки на корректность аргументов файла конфигурации
-    try:
-        if not data['environment']:
-            error("Field 'enviroment' is empty")
-
-        if not data['services']:
-            error("Field 'services' is empty")
-        else:
-            if not isinstance(data['services'], dict):
-                error("Field 'services' must be a mapping")
-
-            if not data['services']['table_url']:
-                error("Field 'table_url' is empty")
-
-            if not data['services']['form_url']:
-                error("Field 'form_url' is empty")
-
-        if not data['backup']:
-            error("Field 'backup' is empty")
-        else:
-            if not isinstance(data['services'], dict):
-                error("Field 'backup' must be a mapping")
-
-            if not data['backup']['directory']:
-                error("Field 'directory' is empty")
-
-    except KeyError as e:
-        error(f"Missing required field {e.args[0]} at config file")
-
     return data
 
 
