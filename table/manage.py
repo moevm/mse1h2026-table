@@ -1,5 +1,7 @@
 import argparse
 import datetime
+import os
+import yaml
 
 from scripts.upload_xlsx import upload_batch
 from scripts.utils import success, error, now
@@ -24,6 +26,20 @@ def add_nextcloud_args(parser):
     parser.add_argument(
         "--password", default="super_secure_password", help="Admin password"
     )
+
+
+def load_config(args):
+    # --config [path]
+    cfg_path = args.config
+    if not os.path.exists(cfg_path):
+        error(f"File not found at path {cfg_path}")
+    try:
+        with open(cfg_path, "r") as f:
+            data = yaml.safe_load(f)
+    except yaml.YAMLError:
+        error("Invalid YAML file")
+
+    return data
 
 
 # DEPLOY
@@ -173,7 +189,7 @@ def main():
     parser.add_argument("--env", help="Env")
     parser.add_argument("--project-dir", default=".", help="Project directory")
 
-    subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers = parser.add_subparsers(dest="command")
 
     # DEPLOY
     deploy = subparsers.add_parser("deploy")
@@ -291,7 +307,16 @@ def main():
     upload.set_defaults(func=upload_run)
 
     args = parser.parse_args()
-    args.func(args)
+
+    if args.config:
+        config_data = load_config(args)
+        args.config_data = config_data
+        print("Configuration loaded")
+    else:
+        args.config_data = None
+
+    if args.command is not None:
+        args.func(args)
 
 
 if __name__ == "__main__":
