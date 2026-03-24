@@ -26,9 +26,10 @@ value:
               params = {"format": "json"}
               headers = {"OCS-APIRequest": "true"}
 
-              resp = requests.get(url, auth=auth, headers=headers, params=params)
+              resp = requests.get(url, auth=auth, headers=headers, params=params, timeout=10)
               if resp.status_code != 200:
                   raise Exception(f"Failed to get submissions: {resp.status_code}")
+              print(resp.text)
 
               data = resp.json()
               submissions = data.get("ocs", {}).get("data", {}).get("submissions", [])
@@ -88,6 +89,7 @@ value:
               resp = requests.get(questions_url, auth=auth, headers=headers, params={"format": "json"})
               if resp.status_code != 200:
                   raise Exception(f"Failed to get form questions: {resp.status_code}")
+              print(resp.text)
 
               data = resp.json()
               try:
@@ -98,9 +100,10 @@ value:
               # Скачивание
               path = file_path.lstrip('/')
               download_url = f"{base_url}/remote.php/dav/files/{username}/{path}"
-              resp = requests.get(download_url, auth=auth)
+              resp = requests.get(download_url, auth=auth, timeout=10)
               if resp.status_code != 200:
                   raise Exception(f"Failed to download file: {resp.status_code}")
+              print(resp.text)
 
               # Открытие таблицы
               file_data = BytesIO(resp.content)
@@ -109,6 +112,8 @@ value:
 
               # Следующая свободная строка
               next_row = sheet.max_row + 1
+              while sheet.cell(row=next_row-1, column=1).value is None:
+                  next_row -= 1
 
               # Данные пользователя и времени
               user_id = submission.get("userId", "")
@@ -147,7 +152,7 @@ value:
               output.seek(0)
 
               upload_url = f"{base_url}/remote.php/dav/files/{username}/{path}"
-              put_resp = requests.put(upload_url, data=output, auth=auth,
+              put_resp = requests.put(upload_url, data=output, auth=auth, timeout=10,
                                       headers={"Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"})
               if put_resp.status_code not in (200, 201, 204):
                   raise Exception(f"Upload failed: {put_resp.status_code}")
