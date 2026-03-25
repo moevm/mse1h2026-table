@@ -3,6 +3,7 @@ import datetime
 import os
 import yaml
 
+from scripts.deploy import deploy_up, deploy_down, deploy_demo, deploy_status
 from scripts.upload_xlsx import upload_batch
 from scripts.utils import success, error, now
 from scripts.users import (
@@ -34,43 +35,12 @@ def load_config(args):
     if not os.path.exists(cfg_path):
         error(f"File not found at path {cfg_path}")
     try:
-        with open(cfg_path, "r") as f:
+        with open(cfg_path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
     except yaml.YAMLError:
         error("Invalid YAML file")
 
     return data
-
-
-# DEPLOY
-
-def deploy_up(args):
-    # deploy up
-    print("[STUB] docker compose up -d")
-    success({
-        "services": ["tables", "forms"],
-        "status": "running",
-        "timestamp": now(),
-        "env": args.env,
-        "project_dir": args.project_dir
-    }, args.output)
-
-
-def deploy_down(args):
-    # deploy down
-    print("[STUB] docker compose down")
-    success({
-        "status": "stopped",
-        "timestamp": now()
-    }, args.output)
-
-
-def deploy_status(args):
-    # deploy status
-    success({
-        "tables": "running",
-        "forms": "running"
-    }, args.output)
 
 
 # BACKUP
@@ -193,11 +163,13 @@ def main():
 
     # DEPLOY
     deploy = subparsers.add_parser("deploy")
+    add_nextcloud_args(deploy)
     deploy_sub = deploy.add_subparsers(dest="action", required=True)
 
     deploy_sub.add_parser("up").set_defaults(func=deploy_up)
     deploy_sub.add_parser("down").set_defaults(func=deploy_down)
     deploy_sub.add_parser("status").set_defaults(func=deploy_status)
+    deploy_sub.add_parser("demo").set_defaults(func=deploy_demo)
 
     # USERS
     users = subparsers.add_parser("users")
@@ -210,22 +182,18 @@ def main():
         "--email", default=None,
         help="User email"
     )
-
     create.add_argument(
         "--display-name", dest="display_name",
         default=None, help="Display name"
     )
-
     create.add_argument(
         "--user-password", dest="user_password",
         default=None, help="User password"
     )
-
     create.add_argument(
         "--quota", default=None,
         help="Storage quota (e.g. 1GB)"
     )
-
     create.add_argument(
         "--groups", nargs="+", default=None,
         help="Groups to add user to"
