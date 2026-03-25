@@ -7,8 +7,6 @@ from pathlib import Path
 import csv
 
 import requests
-import os
-import yaml
 
 from scripts.upload_xlsx import upload_batch
 from scripts.users_from_csv import create_users_from_csv
@@ -93,7 +91,7 @@ def load_config(args):
         error("Invalid YAML file")
 
     return data
-  
+
 
 # DEPLOY
 
