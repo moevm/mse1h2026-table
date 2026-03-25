@@ -1,15 +1,14 @@
 import argparse
 import datetime
-<<<<<<< HEAD
-=======
 import os
 import yaml
->>>>>>> fcf6eec (confict resolve)
 import subprocess
 from pathlib import Path
 import csv
 
 import requests
+import os
+import yaml
 
 from scripts.upload_xlsx import upload_batch
 from scripts.users_from_csv import create_users_from_csv
@@ -21,8 +20,6 @@ from scripts.users import (
     users_csv_delete,
     users_list,
 )
-import os
-import yaml
 
 
 def add_nextcloud_args(parser):
@@ -96,52 +93,7 @@ def load_config(args):
         error("Invalid YAML file")
 
     return data
-
-
-def get_compose_dir(args):
-    return (Path(__file__).resolve().parent.parent /
-            "playground" /
-            "onlyoffice-nextcloud" /
-            "deploy").resolve()
-
-
-def get_compose_file(args):
-    return get_compose_dir(args) / "docker-compose.yml"
-
-
-def get_scripts_dir():
-    return Path(__file__).resolve().parent / "scripts"
-
-
-def get_nextcloud_url(args):
-    return getattr(args, "url", "http://localhost:8080")
-
-
-def get_admin_user(args):
-    return getattr(args, "username", "admin")
-
-
-def get_admin_password(args):
-    return getattr(args, "password", "super_secure_password")
-
-
-def run_command(cmd, cwd=None):
-    try:
-        return subprocess.run(
-            cmd,
-            cwd=cwd,
-            check=True,
-            text=True,
-            capture_output=True
-        )
-    except FileNotFoundError as e:
-        error(str(e))
-    except subprocess.CalledProcessError as e:
-        msg = e.stderr.strip() if e.stderr else e.stdout.strip()
-        if not msg:
-            msg = str(e)
-        error(msg)
-
+  
 
 # DEPLOY
 
@@ -154,8 +106,6 @@ def deploy_up(args):
     if not compose_file.exists():
         error(f"Не найден docker-compose.yml: {compose_file}")
 
-<<<<<<< HEAD
-<<<<<<< HEAD
     run_command(["docker", "compose", "-f", str(compose_file),
                 "up", "-d"], cwd=compose_dir)
 
@@ -164,22 +114,6 @@ def deploy_up(args):
             "app", "db", "onlyoffice-document-server",
             "nginx", "nextcloud-init"
         ],
-=======
-    run_command(["docker", "compose", "-f", str(compose_file), "up", "-d"], cwd=compose_dir)
-
-    success({
-        "services": ["app", "db", "onlyoffice-document-server", "nginx", "nextcloud-init"],
->>>>>>> fcf6eec (confict resolve)
-=======
-    run_command(["docker", "compose", "-f", str(compose_file),
-                "up", "-d"], cwd=compose_dir)
-
-    success({
-        "services": [
-            "app", "db", "onlyoffice-document-server",
-            "nginx", "nextcloud-init"
-        ],
->>>>>>> 5a1356f (linter fix)
         "status": "running",
         "timestamp": now(),
         "env": args.env,
@@ -196,17 +130,8 @@ def deploy_down(args):
     if not compose_file.exists():
         error(f"Не найден docker-compose.yml: {compose_file}")
 
-<<<<<<< HEAD
-<<<<<<< HEAD
     run_command(["docker", "compose", "-f",
                 str(compose_file), "down"], cwd=compose_dir)
-=======
-    run_command(["docker", "compose", "-f", str(compose_file), "down"], cwd=compose_dir)
->>>>>>> fcf6eec (confict resolve)
-=======
-    run_command(["docker", "compose", "-f",
-                str(compose_file), "down"], cwd=compose_dir)
->>>>>>> 5a1356f (linter fix)
 
     success({
         "status": "stopped",
@@ -282,20 +207,10 @@ def deploy_demo(args):
             ]
 
     def share_folder(share_type, share_with, permissions):
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 5a1356f (linter fix)
         url = (
             f"{base_url.rstrip('/')}/ocs/v2.php/apps/files_sharing/"
             "api/v1/shares?format=json"
         )
-<<<<<<< HEAD
-=======
-        url = f"{base_url.rstrip('/')}/ocs/v2.php/apps/files_sharing/api/v1/shares?format=json"
->>>>>>> fcf6eec (confict resolve)
-=======
->>>>>>> 5a1356f (linter fix)
         resp = requests.post(
             url,
             auth=(admin_user, admin_pass),
@@ -310,52 +225,28 @@ def deploy_demo(args):
         )
 
         if resp.status_code != 200:
-<<<<<<< HEAD
-<<<<<<< HEAD
             return {"status": "error", "http_code":
                     resp.status_code, "body": resp.text[:300]}
-=======
-            return {"status": "error", "http_code": resp.status_code, "body": resp.text[:300]}
->>>>>>> fcf6eec (confict resolve)
-=======
-            return {"status": "error", "http_code":
-                    resp.status_code, "body": resp.text[:300]}
->>>>>>> 5a1356f (linter fix)
 
         try:
             data = resp.json()
         except ValueError:
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 5a1356f (linter fix)
             return {
                 "status": "error",
                 "reason": "Invalid JSON response from share API",
                 "body": resp.text[:300]
             }
-<<<<<<< HEAD
-=======
-            return {"status": "error", "reason": "Invalid JSON response from share API", "body": resp.text[:300]}
->>>>>>> fcf6eec (confict resolve)
-=======
->>>>>>> 5a1356f (linter fix)
 
         meta = data.get("ocs", {}).get("meta", {})
         code = meta.get("statuscode")
         message = meta.get("message", "")
         if code in (100, 200):
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 5a1356f (linter fix)
             return {
                 "status": "shared",
                 "permissions": permissions,
                 "share_with": share_with,
                 "message": message
             }
-<<<<<<< HEAD
 
         return {
             "status": "error",
@@ -364,21 +255,6 @@ def deploy_demo(args):
             "share_with": share_with,
             "permissions": permissions
         }
-=======
-            return {"status": "shared", "permissions": permissions, "share_with": share_with, "message": message}
-
-        return {"status": "error", "code": code, "reason": message, "share_with": share_with, "permissions": permissions}
->>>>>>> fcf6eec (confict resolve)
-=======
-
-        return {
-            "status": "error",
-            "code": code,
-            "reason": message,
-            "share_with": share_with,
-            "permissions": permissions
-        }
->>>>>>> 5a1356f (linter fix)
 
     print_section("DEPLOY DEMO")
     print_kv("nextcloud_url", base_url)
@@ -390,39 +266,19 @@ def deploy_demo(args):
         error(f"Не найден файл пользователей: {users_csv}")
 
     users_rows = read_users_csv(users_csv)
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 5a1356f (linter fix)
     result_users = create_users_from_csv(
         str(users_csv), base_url, admin_user, admin_pass
     )
 
-<<<<<<< HEAD
-=======
-    result_users = create_users_from_csv(str(users_csv), base_url, admin_user, admin_pass)
->>>>>>> fcf6eec (confict resolve)
-=======
->>>>>>> 5a1356f (linter fix)
     if "error" in result_users:
         error(result_users["error"])
 
     created_set = set(result_users.get("created", []))
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 5a1356f (linter fix)
     failed_map = {
         item.get("user"): item
         for item in result_users.get("failed", [])
         if item.get("user")
     }
-<<<<<<< HEAD
-=======
-    failed_map = {item.get("user"): item for item in result_users.get("failed", []) if item.get("user")}
->>>>>>> fcf6eec (confict resolve)
-=======
->>>>>>> 5a1356f (linter fix)
 
     print_section("USERS")
     print_kv("total", result_users.get("total"))
@@ -433,15 +289,10 @@ def deploy_demo(args):
     if result_users.get("failed"):
         print("Failed users:")
         for item in result_users["failed"]:
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 5a1356f (linter fix)
             print(
                 f"- {item.get('user')}: code={item.get('code')}, "
                 f"reason={item.get('reason')}"
             )
-<<<<<<< HEAD
 
     debug_users = []
     for row in users_rows:
@@ -450,23 +301,6 @@ def deploy_demo(args):
             row["groups"]
         )
 
-=======
-            print(f"- {item.get('user')}: code={item.get('code')}, reason={item.get('reason')}")
-
-    debug_users = []
-    for row in users_rows:
-        role, permissions = resolve_role_and_permissions(row["login"], row["groups"])
->>>>>>> fcf6eec (confict resolve)
-=======
-
-    debug_users = []
-    for row in users_rows:
-        role, permissions = resolve_role_and_permissions(
-            row["login"],
-            row["groups"]
-        )
-
->>>>>>> 5a1356f (linter fix)
         item = {
             "login": row["login"],
             "password": row["password"],
@@ -482,20 +316,10 @@ def deploy_demo(args):
     print_section("ROLES")
     for u in debug_users:
         if u["created"]:
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 5a1356f (linter fix)
             print(
                 f"- {u['login']}: {u['role']} "
                 f"({permissions_text(u['permissions'])})"
             )
-<<<<<<< HEAD
-=======
-            print(f"- {u['login']}: {u['role']} ({permissions_text(u['permissions'])})")
->>>>>>> fcf6eec (confict resolve)
-=======
->>>>>>> 5a1356f (linter fix)
 
     xlsx_files = sorted(scripts_dir.glob("*.xlsx"))
     if not xlsx_files:
@@ -506,22 +330,12 @@ def deploy_demo(args):
     for xlsx_file in xlsx_files:
         try:
             xlsx_upload = upload_batch(
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 5a1356f (linter fix)
                 config={
                     "url": base_url,
                     "user": admin_user,
                     "pass": admin_pass
                 },
 
-<<<<<<< HEAD
-=======
-                config={"url": base_url, "user": admin_user, "pass": admin_pass},
->>>>>>> fcf6eec (confict resolve)
-=======
->>>>>>> 5a1356f (linter fix)
                 file_path=str(xlsx_file),
                 dest=f"/{folder_name}",
                 overwrite=True,
@@ -545,22 +359,12 @@ def deploy_demo(args):
         ("support", 1),
     ]:
         share_result = share_folder(1, group_name, permissions)
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 5a1356f (linter fix)
         share_results.append({
             "group": group_name,
             "permissions": permissions,
-            "result": share_results
+            "result": share_result
         })
 
-<<<<<<< HEAD
-=======
-        share_results.append({"group": group_name, "permissions": permissions, "result": share_result})
->>>>>>> fcf6eec (confict resolve)
-=======
->>>>>>> 5a1356f (linter fix)
         if share_result.get("status") == "shared":
             print(f"- {group_name}: OK")
         else:
@@ -581,14 +385,7 @@ def deploy_demo(args):
         "tables": tables,
     }, args.output)
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 
-=======
->>>>>>> fcf6eec (confict resolve)
-=======
-
->>>>>>> 5a1356f (linter fix)
 # BACKUP
 
 def backup_create(args):
