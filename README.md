@@ -61,6 +61,17 @@ chmod +x ./create_windmill_oauth.sh
 7. Подтвердите доступ учеткой Nextcloud и дождитесь возврата в Windmill.
 8. Убедитесь, что в интерфейсе Windmill статус подключения стал `Connected`.
 
+Создание Windmill workflow:
+
+1. Настройте OAuth подключение
+2. На главной странице рядом с кнопкой "+flow" выберите "Import from YAML".
+3. Вставьте содержимое файла windmill_workflow.yaml.
+4. В блок Triggers необходимо добавить NextCloud.
+5. Нажмите Deploy.
+6. Проверьте ещё раз, что Trigger содержит NextCloud
+
+Теперь в панели Runs будут отображаться получаемые запросы, при отправке формы в NextCloud
+
 Проверка сервисов Docker:
 ```bash
 cd playground/onlyoffice-nextcloud/deploy
