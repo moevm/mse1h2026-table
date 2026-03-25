@@ -1,6 +1,10 @@
 import csv
 import subprocess
 from pathlib import Path
+import json
+import os
+import time
+import requests
 
 from scripts.nextcloud_client import NextcloudClient
 from scripts.upload_xlsx import upload_batch
@@ -198,10 +202,323 @@ def deploy_down(args):
 
 def deploy_status(args):
     # deploy status
-    success({
-        "tables": "running",
-        "forms": "running"
-    }, args.output)
+    compose_dir = get_compose_dir(args)
+    compose_file = get_compose_file(args)
+
+    if not compose_file.exists():
+        error(f"Не найден docker-compose.yml: {compose_file}")
+
+    base_url = get_nextcloud_url(args)
+    windmill_host = os.environ.get("NEXTCLOUD_HOST", "localhost")
+    windmill_port = os.environ.get("WINDMILL_PORT", "8000")
+    windmill_url = f"http://{windmill_host}:{windmill_port}"
+
+    client = NextcloudClient(
+        base_url,
+        get_admin_user(args),
+        get_admin_password(args)
+    )
+
+    def overall_status(components):
+        values = [c.get("status", "error") for c in components.values()]
+        if any(v == "error" for v in values):
+            return "error"
+        if any(v == "starting" for v in values):
+            return "starting"
+        return "ok"
+
+    def parse_compose_ps():
+        result = run_command(
+            [
+                "docker", "compose", "-f", str(compose_file),
+                "ps", "--format", "json", "--all"
+            ],
+            cwd=compose_dir
+        )
+
+        containers = {}
+        for line in result.stdout.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                item = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+
+            service = item.get("Service") or item.get("service")
+            if service:
+                containers[service] = item
+        return containers
+
+    def container_state(item):
+        service = item.get("Service")
+        state = (item.get("State") or "").lower()
+        health = (item.get("Health") or "").lower()
+        exit_code = str(item.get("ExitCode", "")).strip()
+
+        if service == "nextcloud-init":
+            if exit_code == "0":
+                return "ok"
+            if state in ("exited", "dead") and exit_code != "0":
+                return "error"
+            return "starting"
+
+        if state == "running":
+            if health == "unhealthy":
+                return "error"
+            if health == "starting":
+                return "starting"
+            return "ok"
+
+        if state in ("created", "starting", "restarting"):
+            return "starting"
+
+        if state in ("exited", "dead"):
+            return "error"
+
+        return "error"
+
+    def check_db():
+        cmd = [
+            "docker", "compose", "-f", str(compose_file),
+            "exec", "-T", "db",
+            "sh", "-lc",
+            'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+        ]
+        proc = subprocess.run(
+            cmd,
+            cwd=compose_dir,
+            text=True,
+            capture_output=True
+        )
+
+        if proc.returncode == 0:
+            return {
+                "status": "ok",
+                "output": proc.stdout.strip() or proc.stderr.strip()
+            }
+
+        if proc.returncode == 1:
+            return {
+                "status": "starting",
+                "output": proc.stdout.strip() or proc.stderr.strip()
+            }
+
+        return {
+            "status": "error",
+            "output": (
+                proc.stdout.strip() or
+                proc.stderr.strip() or
+                "pg_isready failed"
+            )
+        }
+
+    def check_nextcloud():
+        try:
+            resp = client.session.get(
+                f"{client.base_url}/status.php",
+                timeout=30
+            )
+
+            if resp.status_code == 200:
+                try:
+                    data = resp.json()
+                except ValueError:
+                    return {
+                        "status": "starting",
+                        "http_code": 200,
+                        "reason": "status.php returned non-JSON"
+                    }
+
+                if (data.get("installed") is True and
+                        not data.get("maintenance", False)):
+                    return {
+                        "status": "ok",
+                        "http_code": 200,
+                        "installed": True,
+                        "maintenance": False,
+                        "version": data.get("version"),
+                        "versionstring": data.get("versionstring"),
+                    }
+
+                return {
+                    "status": "starting",
+                    "http_code": 200,
+                    "installed": data.get("installed"),
+                    "maintenance": data.get("maintenance"),
+                }
+
+            if resp.status_code in (502, 503, 504):
+                return {
+                    "status": "starting",
+                    "http_code": resp.status_code
+                }
+
+            return {
+                "status": "error",
+                "http_code": resp.status_code,
+                "reason": resp.text[:200]
+            }
+
+        except requests.RequestException as e:
+            return {
+                "status": "starting",
+                "reason": str(e)
+            }
+
+    def check_http_service(name, url, paths):
+        last = None
+        for path in paths:
+            try:
+                resp = requests.get(
+                    f"{url.rstrip('/')}{path}",
+                    timeout=20,
+                    allow_redirects=False
+                )
+
+                if resp.status_code in (200, 301, 302, 401, 403):
+                    return {
+                        "status": "ok",
+                        "http_code": resp.status_code,
+                        "path": path
+                    }
+
+                if resp.status_code in (502, 503, 504):
+                    last = {
+                        "status": "starting",
+                        "http_code": resp.status_code,
+                        "path": path
+                    }
+                else:
+                    last = {
+                        "status": "error",
+                        "http_code": resp.status_code,
+                        "path": path,
+                        "reason": resp.text[:200]
+                    }
+
+            except requests.RequestException as e:
+                last = {
+                    "status": "starting",
+                    "path": path,
+                    "reason": str(e)
+                }
+
+        return last or {
+            "status": "error",
+            "reason": f"{name} is unreachable"
+        }
+
+    def collect_status():
+        containers_raw = parse_compose_ps()
+
+        required_container_names = [
+            "app", "db", "onlyoffice-document-server", "nginx",
+            "windmill-db", "windmill", "windmill-worker"
+        ]
+        optional_container_names = ["nextcloud-init"]
+        all_container_names = (
+            required_container_names + optional_container_names
+        )
+
+        containers = {}
+        for name in all_container_names:
+            item = containers_raw.get(name)
+            if not item:
+                if name == "nextcloud-init":
+                    containers[name] = {
+                        "status": "ok",
+                        "state": "exited",
+                        "health": "",
+                        "service": name,
+                        "note": "one-shot init container"
+                    }
+                else:
+                    containers[name] = {
+                        "status": "error",
+                        "reason": "container not found",
+                        "service": name
+                    }
+            else:
+                containers[name] = {
+                    "status": container_state(item),
+                    "state": item.get("State"),
+                    "health": item.get("Health"),
+                    "service": name,
+                }
+
+        db_status = check_db()
+        nextcloud_status = check_nextcloud()
+        nginx_status = check_http_service("nginx", base_url, ["/"])
+        windmill_status = check_http_service(
+            "windmill",
+            windmill_url,
+            ["/api/version", "/"]
+        )
+
+        required_containers_status = overall_status({
+            name: {"status": containers[name]["status"]}
+            for name in required_container_names
+        })
+
+        components = {
+            "containers": {
+                "status": overall_status({
+                    name: {"status": containers[name]["status"]}
+                    for name in all_container_names
+                }),
+                "required_status": required_containers_status,
+                "items": containers
+            },
+            "db": db_status,
+            "nextcloud": nextcloud_status,
+            "nginx": nginx_status,
+            "windmill": windmill_status,
+        }
+
+        overall = overall_status({
+            "containers": {"status": required_containers_status},
+            "db": {"status": db_status["status"]},
+            "nextcloud": {"status": nextcloud_status["status"]},
+            "nginx": {"status": nginx_status["status"]},
+            "windmill": {"status": windmill_status["status"]},
+        })
+
+        return {
+            "overall": overall,
+            "compose_dir": str(compose_dir),
+            "compose_file": str(compose_file),
+            "nextcloud_url": base_url,
+            "windmill_url": windmill_url,
+            "components": components,
+            "timestamp": now(),
+        }
+
+    deadline = time.time() + max(args.timeout, 1)
+    attempts = 0
+    snapshot = None
+
+    while True:
+        attempts += 1
+        snapshot = collect_status()
+        snapshot["attempts"] = attempts
+        snapshot["wait"] = {
+            "enabled": bool(args.wait),
+            "timeout": args.timeout,
+            "interval": args.interval,
+        }
+
+        if not args.wait or snapshot["overall"] == "ok":
+            break
+
+        if time.time() >= deadline:
+            snapshot["wait"]["timed_out"] = True
+            break
+
+        time.sleep(max(args.interval, 1))
+
+    success(snapshot, args.output)
 
 
 def deploy_demo(args):
