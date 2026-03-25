@@ -1,6 +1,6 @@
 # mse1h2026-table
 
-## Необходимые настройки hosts
+## Необходимые настройки
 
 Для корректной работы кода необходимо добавить следующие строки в файл `/etc/hosts`:
 
@@ -9,33 +9,25 @@
 ```
 
 ---
-
 ## Установка и запуск
-На текущий момент подготовлены конфигурации для развертывания двух предварительно отобранных решений.
 
-Конфигурации размещены в директории playground в соответствующих подразделах.
+1. Запустить систему:
+```bash
+   python manage.py deploy up
+```
 
----
-### Nextcloud + OnlyOffice
-
-1. Перейти в директорию развертывания:
-   ```bash
-   cd playground/onlyoffice-nextcloud/deploy
-   ```
-
-2. Запустить контейнеры:
-   ```bash
-   docker compose up -d
-   ```
-
-3. По умолчанию Nextcloud (с подключённым OnlyOffice) доступен на порту `8080`.
-
+2. По умолчанию Nextcloud (с подключённым OnlyOffice) доступен на порту `8080`.
    При необходимости порт можно изменить через переменную `NEXTCLOUD_PORT` в файле `.env`.
 
+3. Наполнить систему тестовыми данными:
+```bash
+   python manage.py deploy demo
+```
+
 4. Для остановки:
-   ```bash
-   docker compose down
-   ```
+```bash
+   python manage.py deploy down
+```
 
 #### Интеграция Nextcloud Forms -> Windmill
 
@@ -154,3 +146,47 @@ docker compose restart windmill windmill-worker
 
 - Для просмотра email, групп и квоты используйте флаг --details.
 - Флаг --prefix также работает для фильтрации по началу username.
+
+### Создание и удаление пользователей
+
+- Создать одного пользователя:
+```bash
+  python manage.py users create <username> --email <email> --display-name <name> --user-password <password> --quota 1GB --groups <group>
+```
+- Удалить одного пользователя:
+```bash
+  python manage.py users delete <username>
+```
+- Создать пользователей из CSV:
+```bash
+  python manage.py users csv-create <path/to/file.csv>
+```
+- Удалить пользователей из CSV:
+```bash
+  python manage.py users csv-delete <path/to/file.csv>
+```
+
+### Загрузка таблиц
+
+- Загрузить один файл:
+```bash
+  python manage.py upload --file <path/to/file.xlsx> --dest /папка --name "Название"
+```
+- Загрузить все файлы из директории:
+```bash
+  python manage.py upload --dir <path/to/dir> --dest /папка
+```
+
+### Мониторинг и статус
+
+- Проверить статус всех компонентов системы:
+```bash
+  python manage.py deploy status
+```
+- Ждать полной готовности системы:
+```bash
+  python manage.py deploy status --wait
+```
+- Посмотреть метрики ресурсов (CPU, RAM, диск):
+```bash
+  python manage.py monitor resources
