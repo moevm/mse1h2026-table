@@ -20,7 +20,7 @@ def get_compose_file(args):
 
 
 def get_scripts_dir():
-    return Path(__file__).resolve().parent 
+    return Path(__file__).resolve().parent
 
 
 def get_nextcloud_url(args):
