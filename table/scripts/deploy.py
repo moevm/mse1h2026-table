@@ -13,10 +13,8 @@ from scripts.utils import success, error, now
 
 
 def get_compose_dir(args):
-    return (Path(__file__).resolve().parent.parent.parent /
-            "playground" /
-            "onlyoffice-nextcloud" /
-            "deploy").resolve()
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    return (repo_root / "deploy").resolve()
 
 
 def get_compose_file(args):

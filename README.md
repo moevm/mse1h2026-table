@@ -31,7 +31,7 @@
 
 #### Интеграция Nextcloud Forms -> Windmill
 
-После запуска стека в `playground/onlyoffice-nextcloud/deploy/docker-compose.yml` автоматически поднимаются сервисы:
+После запуска стека в `deploy/docker-compose.yml` автоматически поднимаются сервисы:
 
 - `windmill-db` (PostgreSQL для Windmill)
 - `windmill` (Windmill server)
@@ -66,13 +66,13 @@ chmod +x ./create_windmill_oauth.sh
 
 Проверка сервисов Docker:
 ```bash
-cd playground/onlyoffice-nextcloud/deploy
+cd deploy
 docker compose ps
 ```
 
 Если стек уже был поднят до изменений, примените интеграцию вручную:
 ```bash
-cd playground/onlyoffice-nextcloud/deploy
+cd deploy
 docker compose run --rm nextcloud-init
 ```
 
@@ -81,7 +81,7 @@ docker compose run --rm nextcloud-init
 `/api/w/admins/native_triggers/integrations/nextcloud/exists`, и в логах есть
 `permission denied to set role "windmill_admin"`, выполните разово:
 ```bash
-cd playground/onlyoffice-nextcloud/deploy
+cd deploy
 docker compose exec -T windmill-db psql -U postgres -d windmill -c "GRANT windmill_admin TO windmill;"
 docker compose exec -T windmill-db psql -U postgres -d windmill -c "GRANT windmill_user TO windmill;"
 docker compose restart windmill windmill-worker
