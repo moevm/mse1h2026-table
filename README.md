@@ -15,9 +15,13 @@
 ```bash
    python manage.py deploy up
 ```
+   Или напрямую через Docker Compose:
+```bash
+   docker compose -f deploy/docker-compose.yml up -d
+```
 
 2. По умолчанию Nextcloud (с подключённым OnlyOffice) доступен на порту `8080`.
-   При необходимости порт можно изменить через переменную `NEXTCLOUD_PORT` в файле `.env`.
+   При необходимости порт можно изменить через переменную `NEXTCLOUD_PORT` в файле `deploy/.env`.
 
 3. Наполнить систему тестовыми данными:
 ```bash
@@ -27,6 +31,10 @@
 4. Для остановки:
 ```bash
    python manage.py deploy down
+```
+   Или напрямую через Docker Compose:
+```bash
+   docker compose -f deploy/docker-compose.yml down
 ```
 
 #### Интеграция Nextcloud Forms -> Windmill
