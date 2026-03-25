@@ -1,6 +1,6 @@
 # mse1h2026-table
 
-## Необходимые настройки hosts
+## Необходимые настройки
 
 Для корректной работы кода необходимо добавить следующие строки в файл `/etc/hosts`:
 
@@ -9,37 +9,37 @@
 ```
 
 ---
-
 ## Установка и запуск
-На текущий момент подготовлены конфигурации для развертывания двух предварительно отобранных решений.
 
-Конфигурации размещены в директории playground в соответствующих подразделах.
+1. Запустить систему:
+```bash
+   python manage.py deploy up
+```
+   Или напрямую через Docker Compose:
+```bash
+   docker compose -f deploy/docker-compose.yml up -d
+```
 
----
-### Nextcloud + OnlyOffice
+2. По умолчанию Nextcloud (с подключённым OnlyOffice) доступен на порту `8080`.
+   При необходимости порт можно изменить через переменную `NEXTCLOUD_PORT` в файле `deploy/.env`.
 
-1. Перейти в директорию развертывания:
-   ```bash
-   cd playground/onlyoffice-nextcloud/deploy
-   ```
-
-2. Запустить контейнеры:
-   ```bash
-   docker compose up -d
-   ```
-
-3. По умолчанию Nextcloud (с подключённым OnlyOffice) доступен на порту `8080`.
-
-   При необходимости порт можно изменить через переменную `NEXTCLOUD_PORT` в файле `.env`.
+3. Наполнить систему тестовыми данными:
+```bash
+   python manage.py deploy demo
+```
 
 4. Для остановки:
-   ```bash
-   docker compose down
-   ```
+```bash
+   python manage.py deploy down
+```
+   Или напрямую через Docker Compose:
+```bash
+   docker compose -f deploy/docker-compose.yml down
+```
 
 #### Интеграция Nextcloud Forms -> Windmill
 
-После запуска стека в `playground/onlyoffice-nextcloud/deploy/docker-compose.yml` автоматически поднимаются сервисы:
+После запуска стека в `deploy/docker-compose.yml` автоматически поднимаются сервисы:
 
 - `windmill-db` (PostgreSQL для Windmill)
 - `windmill` (Windmill server)
@@ -74,13 +74,13 @@ chmod +x ./create_windmill_oauth.sh
 
 Проверка сервисов Docker:
 ```bash
-cd playground/onlyoffice-nextcloud/deploy
+cd deploy
 docker compose ps
 ```
 
 Если стек уже был поднят до изменений, примените интеграцию вручную:
 ```bash
-cd playground/onlyoffice-nextcloud/deploy
+cd deploy
 docker compose run --rm nextcloud-init
 ```
 
@@ -89,7 +89,7 @@ docker compose run --rm nextcloud-init
 `/api/w/admins/native_triggers/integrations/nextcloud/exists`, и в логах есть
 `permission denied to set role "windmill_admin"`, выполните разово:
 ```bash
-cd playground/onlyoffice-nextcloud/deploy
+cd deploy
 docker compose exec -T windmill-db psql -U postgres -d windmill -c "GRANT windmill_admin TO windmill;"
 docker compose exec -T windmill-db psql -U postgres -d windmill -c "GRANT windmill_user TO windmill;"
 docker compose restart windmill windmill-worker
@@ -154,3 +154,47 @@ docker compose restart windmill windmill-worker
 
 - Для просмотра email, групп и квоты используйте флаг --details.
 - Флаг --prefix также работает для фильтрации по началу username.
+
+### Создание и удаление пользователей
+
+- Создать одного пользователя:
+```bash
+  python manage.py users create <username> --email <email> --display-name <name> --user-password <password> --quota 1GB --groups <group>
+```
+- Удалить одного пользователя:
+```bash
+  python manage.py users delete <username>
+```
+- Создать пользователей из CSV:
+```bash
+  python manage.py users csv-create <path/to/file.csv>
+```
+- Удалить пользователей из CSV:
+```bash
+  python manage.py users csv-delete <path/to/file.csv>
+```
+
+### Загрузка таблиц
+
+- Загрузить один файл:
+```bash
+  python manage.py upload --file <path/to/file.xlsx> --dest /папка --name "Название"
+```
+- Загрузить все файлы из директории:
+```bash
+  python manage.py upload --dir <path/to/dir> --dest /папка
+```
+
+### Мониторинг и статус
+
+- Проверить статус всех компонентов системы:
+```bash
+  python manage.py deploy status
+```
+- Ждать полной готовности системы:
+```bash
+  python manage.py deploy status --wait
+```
+- Посмотреть метрики ресурсов (CPU, RAM, диск):
+```bash
+  python manage.py monitor resources
