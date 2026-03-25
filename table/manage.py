@@ -168,8 +168,17 @@ def main():
 
     deploy_sub.add_parser("up").set_defaults(func=deploy_up)
     deploy_sub.add_parser("down").set_defaults(func=deploy_down)
-    deploy_sub.add_parser("status").set_defaults(func=deploy_status)
     deploy_sub.add_parser("demo").set_defaults(func=deploy_demo)
+
+    # STATUS
+    status = deploy_sub.add_parser("status")
+    status.add_argument("--wait", action="store_true",
+                        help="Wait until the whole system is ready")
+    status.add_argument("--timeout", type=int, default=1200,
+                        help="Max wait time in seconds")
+    status.add_argument("--interval", type=int, default=10,
+                        help="Retry interval in seconds")
+    status.set_defaults(func=deploy_status)
 
     # USERS
     users = subparsers.add_parser("users")
