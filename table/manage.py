@@ -1,6 +1,5 @@
 import argparse
 import datetime
-<<<<<<< HEAD
 import subprocess
 from pathlib import Path
 import csv
@@ -17,10 +16,8 @@ from scripts.users import (
     users_csv_delete,
     users_list,
 )
-=======
 import os
 import yaml
->>>>>>> 3e7d755 (add function to manage.py, change requirements)
 
 
 def add_nextcloud_args(parser):
