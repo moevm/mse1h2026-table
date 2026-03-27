@@ -3,9 +3,11 @@
 ## Требования
 
 Перед началом убедитесь, что установлены:
+
 - [Docker](https://docs.docker.com/get-started/get-docker/) и [Docker Compose](https://docs.docker.com/compose/install/)
 - Python 3.x
 - Git
+
 ---
 
 ## Необходимые настройки
@@ -14,6 +16,7 @@
 ```
 127.0.0.1   nextcloud.local
 ```
+
 На Linux/macOS это можно сделать командой:
 ```bash
 echo "127.0.0.1   nextcloud.local" | sudo tee -a /etc/hosts
@@ -23,15 +26,18 @@ echo "127.0.0.1   nextcloud.local" | sudo tee -a /etc/hosts
 ## Установка и запуск
 
 1. Склонируйте репозиторий и перейдите в него:
+ 
 ```bash
 git clone https://github.com/moevm/mse1h2026-table.git
 cd mse1h2026-table
 ```
  
 2. Перейдите в папку `table/` — все дальнейшие команды `manage.py` выполняются отсюда:
+ 
 ```bash
 cd table
 ```
+
 3. Запустить систему:
 ```bash
    python manage.py deploy up
@@ -41,21 +47,27 @@ cd table
    cd deploy
    docker compose up -d
 ```
+
 4. После запуска Nextcloud (с подключённым OnlyOffice) доступен по адресу:
    **http://nextcloud.local:8080**
+
    При необходимости порт можно изменить через переменную `NEXTCLOUD_PORT` в файле `deploy/.env`.
+
 5. Дождаться полной готовности системы:
 ```bash
 python manage.py deploy status --wait
 ```
+
 6. Наполнить систему тестовыми данными:
 ```bash
    python manage.py deploy demo
 ```
+
 7. Для остановки:
 ```bash
 python manage.py deploy down
 ```
+
 Или напрямую через Docker Compose (из папки `deploy/`):
 ```bash
 cd deploy
@@ -67,6 +79,16 @@ docker compose down
 
 Инструкция по настройке OAuth-подключения, созданию workflow и проверке интеграции - в [Интеграция Windmill
 ](https://github.com/moevm/mse1h2026-table/wiki/Интеграция-Windmill).
+### Создание и отправка формы
+
+После настройки Windmill, данные из формы попадают в систему следующим образом:
+1. В разделе "Формы" Nextcloud создайте новую или выберите существующую форму и добавьте в нее необходимые вопросы.
+2. Во вкладке `Поделиться` можно настроить саму форму, а также сгенерировать ссылку для общего доступа.
+![Проверка настройки](images/image6.png)
+3. Во вкладке `Результаты` формы нажмите `Создать электронную таблицу`, чтобы связать форму с хранилищем данных.
+4. При отправке ответа в Nextcloud Forms генерируется событие, которое перехватывается Windmill через триггер, настроенный в пункте `Создание Windmill workflow`.
+
+#### Проверка, что интеграция реально работает
 
 
 ---
@@ -75,37 +97,45 @@ docker compose down
 ```bash
 cd table
 ```
+
 ### Просмотр пользователей
+
 - Показать всех пользователей (только логины):
-```bash
+  ```bash
   python manage.py users list
-```
+  ```
+
 - Показать всех пользователей с подробностями (email, группы, квота):
-```
+  ```
   python manage.py users list --details
-```
+  ```
+
 #### Фильтрация пользователей
+
 Для гибкой фильтрации используйте флаг --filter <поле> <режим> <значение>. Можно указывать несколько фильтров подряд.
+
 - По username (начинается с 'adm'):
-```
+  ```
   python manage.py users list --filter username prefix adm
-```
+  ```
 - По email (содержит 'example.com'):
-```
+  ```
   python manage.py users list --filter email contains example.com --details
-```
+  ```
 - По группе (точное совпадение 'admin'):
-```
+  ```
   python manage.py users list --filter group exact admin --details
-```
+  ```
 - Комбинированные фильтры:
-```
+  ```
   python manage.py users list --filter username prefix adm --filter email contains mail.ru --details
-```
+  ```
+
 #### Описание фильтров
 - <поле>: username, email, group
 - <режим>: contains (содержит), prefix (начинается с), exact (точное совпадение)
 - <значение>: строка для поиска
+
 - Для просмотра email, групп и квоты используйте флаг --details.
 - Флаг --prefix также работает для фильтрации по началу username.
 
