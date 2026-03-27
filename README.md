@@ -6,6 +6,7 @@
 
 - [Docker](https://docs.docker.com/get-started/get-docker/) и [Docker Compose](https://docs.docker.com/compose/install/)
 - Python 3.x
+- Git
 
 ---
 
@@ -24,12 +25,20 @@ echo "127.0.0.1   nextcloud.local" | sudo tee -a /etc/hosts
 ---
 ## Установка и запуск
 
-Все команды выполняются из папки `table/` внутри репозитория:
+1. Склонируйте репозиторий и перейдите в него:
+ 
+```bash
+git clone https://github.com/moevm/mse1h2026-table.git
+cd mse1h2026-table
+```
+ 
+2. Перейдите в папку `table/` — все дальнейшие команды `manage.py` выполняются отсюда:
+ 
 ```bash
 cd table
 ```
 
-1. Запустить систему:
+3. Запустить систему:
 ```bash
    python manage.py deploy up
 ```
@@ -39,22 +48,22 @@ cd table
    docker compose up -d
 ```
 
-2. После запуска Nextcloud (с подключённым OnlyOffice) доступен по адресу:
+4. После запуска Nextcloud (с подключённым OnlyOffice) доступен по адресу:
    **http://nextcloud.local:8080**
 
    При необходимости порт можно изменить через переменную `NEXTCLOUD_PORT` в файле `deploy/.env`.
 
-3. Дождаться полной готовности системы:
+5. Дождаться полной готовности системы:
 ```bash
 python manage.py deploy status --wait
 ```
 
-4. Наполнить систему тестовыми данными:
+6. Наполнить систему тестовыми данными:
 ```bash
    python manage.py deploy demo
 ```
 
-5. Для остановки:
+7. Для остановки:
 ```bash
 python manage.py deploy down
 ```
