@@ -86,33 +86,24 @@ docker compose down
 
 1. Откройте в браузере Windmill, доступный по адресу: http://windmill.local:8000
 2. Войдите в workspace admin. 
-  <p align="center">
-  <img src="images/image1.png" width="600">
-  </p>
+<p align="center"><img src="images/image1.png" width="600"></p>
 3. Перейдите `Settings -> Workspace -> Native Triggers`.
-  <p align="center">
-  <img src="images/image2.png" width="600">
-  </p>
-  <p align="center">
-  <img src="images/image3.png" width="600">
-  </p>
-4. Для интеграции Nextcloud укажите `Nextcloud base URL`. (http://nextcloud.local:8080)
+<p align="center">
+  <img src="images/image2.png" width="600" alt="Windmill workspace settings page showing the admins workspace. The main section lists Members with columns for Email, Username, Executions (tw), Role, and Enabled, but currently shows no members. On the left sidebar, navigation options include Home, Runs, Variables, Resources, Assets, Tutorials, and Logs. The Settings menu is expanded, highlighting Workspace, and a dropdown shows options for Account, Workspace, and Instance. Under Integrations, Native triggers is listed. The environment is a clean, modern web interface with a calm and neutral tone. Top right has a button labeled Instance settings. Text on the page: Workspace settings: admins. Members (0). Add members to your workspace and manage their roles. You can also auto-add users to join your workspace. Learn more. Filter members. Auto-add: OFF. Add new user. Email. Username. Executions (tw). Role. Enabled. Operator settings. Integrations. Slack / Teams. Webhook. Native triggers. Hooks. Error / success handler. Critical alerts. Data tables. Object storage (S3). Apps. Dependencies. Encryption." />
+</p>
+<p align="center"><img src="images/image3.png" width="600"></p>
+4. Для интеграции Nextcloud укажите `Nextcloud base URL`. (http://nextcloud.local:8080).
 5. Для получения `Client ID` и `Client secret` необходимо выполнить скрипт из папки `deploy`:
 ```
 ./create_windmill_oauth.sh
 ```
-6. Вставьте `Client ID` и `Client secret` из Nextcloud OAuth-клиента и нажмите `Save configuration`.
 6. Нажмите `Connect`.
 7. Подтвердите доступ учетной записью Nextcloud и дождитесь возврата в Windmill.
 8. В всплывающем окне нажмите `Configure your instance settings to get started` нажмите `Skip`.
 9. В окне `Save Nextcloud credentials as resource` нажмите `Save`.
-  <p align="center">
-  <img src="images/image4.png" width="600">
-  </p>
+<p align="center"><img src="images/image4.png" width="600"></p>
 10. Убедитесь, что в интерфейсе Windmill статус подключения стал `Connected`.
-  <p align="center">
-  <img src="images/image5.png" width="600">
-  </p>
+<p align="center"><img src="images/image5.png" width="600"></p>
 
 Создание Windmill workflow:
 
