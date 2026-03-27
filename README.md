@@ -87,11 +87,15 @@ docker compose down
 1. Откройте в браузере Windmill, доступный по адресу: http://windmill.local:8000
 2. Войдите в workspace admin. 
   <p align="center">
-  <img src="images/image1.png" alt="Вход в Windmill" width="400">
+  <img src="images/image1.png" width="600">
   </p>
 3. Перейдите `Settings -> Workspace -> Native Triggers`.
-![alt text](images/image2.png)
-![alt text](images/image3.png)
+  <p align="center">
+  <img src="images/image2.png" width="600">
+  </p>
+  <p align="center">
+  <img src="images/image3.png" width="600">
+  </p>
 4. Для интеграции Nextcloud укажите `Nextcloud base URL`. (http://nextcloud.local:8080)
 5. Для получения `Client ID` и `Client secret` необходимо выполнить скрипт из папки `deploy`:
 ```
@@ -102,9 +106,13 @@ docker compose down
 7. Подтвердите доступ учетной записью Nextcloud и дождитесь возврата в Windmill.
 8. В всплывающем окне нажмите `Configure your instance settings to get started` нажмите `Skip`.
 9. В окне `Save Nextcloud credentials as resource` нажмите `Save`.
-![alt text](images/image4.png)
+  <p align="center">
+  <img src="images/image4.png" width="600">
+  </p>
 10. Убедитесь, что в интерфейсе Windmill статус подключения стал `Connected`.
-![alt text](images/image5.png)
+  <p align="center">
+  <img src="images/image5.png" width="600">
+  </p>
 
 Создание Windmill workflow:
 
@@ -122,7 +130,6 @@ docker compose down
 1. Проверить статус подключения в Windmill:
    - `Settings -> Workspace -> Native Triggers -> Nextcloud`
    - Статус должен быть `Connected`.
-![alt text](images/image5.png)
 2. Создать тестовый flow:
    - `New Flow` -> блок `Triggers` -> `+` -> `Nextcloud`.
    - В списке событий должны быть доступны события (без ошибок `No events available`).
