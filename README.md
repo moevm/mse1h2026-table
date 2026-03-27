@@ -1,40 +1,68 @@
 # mse1h2026-table
 
+## Требования
+
+Перед началом убедитесь, что установлены:
+
+- [Docker](https://docs.docker.com/get-started/get-docker/) и [Docker Compose](https://docs.docker.com/compose/install/)
+- Python 3.x
+
+---
+
 ## Необходимые настройки
 
-Для корректной работы кода необходимо добавить следующие строки в файл `/etc/hosts`:
-
+Добавьте запись в файл `/etc/hosts` (требуется один раз):
 ```
 127.0.0.1   nextcloud.local
+```
+
+На Linux/macOS это можно сделать командой:
+```bash
+echo "127.0.0.1   nextcloud.local" | sudo tee -a /etc/hosts
 ```
 
 ---
 ## Установка и запуск
 
+Все команды выполняются из папки `table/` внутри репозитория:
+```bash
+cd table
+```
+
 1. Запустить систему:
 ```bash
    python manage.py deploy up
 ```
-   Или напрямую через Docker Compose:
+   Или напрямую через Docker Compose (из папки `deploy/`):
 ```bash
-   docker compose -f deploy/docker-compose.yml up -d
+   cd deploy
+   docker compose up -d
 ```
 
-2. По умолчанию Nextcloud (с подключённым OnlyOffice) доступен на порту `8080`.
+2. После запуска Nextcloud (с подключённым OnlyOffice) доступен по адресу:
+   **http://nextcloud.local:8080**
+
    При необходимости порт можно изменить через переменную `NEXTCLOUD_PORT` в файле `deploy/.env`.
 
-3. Наполнить систему тестовыми данными:
+3. Дождаться полной готовности системы:
+```bash
+python manage.py deploy status --wait
+```
+
+4. Наполнить систему тестовыми данными:
 ```bash
    python manage.py deploy demo
 ```
 
-4. Для остановки:
+5. Для остановки:
 ```bash
-   python manage.py deploy down
+python manage.py deploy down
 ```
-   Или напрямую через Docker Compose:
+
+Или напрямую через Docker Compose (из папки `deploy/`):
 ```bash
-   docker compose -f deploy/docker-compose.yml down
+cd deploy
+docker compose down
 ```
 
 #### Интеграция Nextcloud Forms -> Windmill
@@ -113,6 +141,11 @@ docker compose restart windmill windmill-worker
 ---
 
 ## Работа с пользователями Nextcloud через manage.py
+Все команды выполняются из папки `table/`:
+```bash
+cd table
+```
+
 ### user list
 #### Просмотр пользователей
 
