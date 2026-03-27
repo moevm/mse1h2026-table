@@ -77,7 +77,7 @@ docker compose down
 
 ## Интеграция Nextcloud Forms → Windmill → Таблицы 
 
-Инструкция по настройке OAuth-подключения, созданию workflow и проверке интеграции - в [Интеграция Windmill
+Инструкция по настройке OAuth-подключения, созданию workflow для отправки форм и проверке интеграции - на вики странице [Интеграция Windmill
 ](https://github.com/moevm/mse1h2026-table/wiki/Интеграция-Windmill).
 
 ---
