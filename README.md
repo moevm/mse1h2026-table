@@ -84,19 +84,24 @@ docker compose down
 
 Далее настройка OAuth-подключения в Windmill:
 
-1. Откройте Windmill.
-2. Войдите в workspace admin.
+1. Откройте в браузере Windmill, доступный по адресу: http://windmill.local:8000
+2. Войдите в workspace admin. ![alt text](images/image1.png)
 3. Перейдите `Settings -> Workspace -> Native Triggers`.
-4. Для интеграции Nextcloud укажите `Nextcloud base URL`.
-5. Для получения `Client ID` и `Client secret` необходимо выполнить скрипт:
+![alt text](images/image2.png)
+![alt text](images/image3.png)
+4. Для интеграции Nextcloud укажите `Nextcloud base URL`. (http://nextcloud.local:8080)
+5. Для получения `Client ID` и `Client secret` необходимо выполнить скрипт из папки `deploy`:
 ```
-chmod +x ./create_windmill_oauth.sh
 ./create_windmill_oauth.sh
 ```
 6. Вставьте `Client ID` и `Client secret` из Nextcloud OAuth-клиента и нажмите `Save configuration`.
 6. Нажмите `Connect`.
-7. Подтвердите доступ учеткой Nextcloud и дождитесь возврата в Windmill.
-8. Убедитесь, что в интерфейсе Windmill статус подключения стал `Connected`.
+7. Подтвердите доступ учетной записью Nextcloud и дождитесь возврата в Windmill.
+8. В всплывающем окне нажмите `Configure your instance settings to get started` нажмите `Skip`.
+9. В окне `Save Nextcloud credentials as resource` нажмите `Save`.
+![alt text](images/image4.png)
+10. Убедитесь, что в интерфейсе Windmill статус подключения стал `Connected`.
+![alt text](images/image5.png)
 
 Создание Windmill workflow:
 
@@ -109,34 +114,12 @@ chmod +x ./create_windmill_oauth.sh
 
 Теперь в панели Runs будут отображаться получаемые запросы, при отправке формы в NextCloud
 
-Проверка сервисов Docker:
-```bash
-cd deploy
-docker compose ps
-```
-
-Если стек уже был поднят до изменений, примените интеграцию вручную:
-```bash
-cd deploy
-docker compose run --rm nextcloud-init
-```
-
-Если в Windmill в консоли браузера видите `400 Bad Request` на эндпоинтах вида
-`/api/w/admins/workspaces/used_triggers` или
-`/api/w/admins/native_triggers/integrations/nextcloud/exists`, и в логах есть
-`permission denied to set role "windmill_admin"`, выполните разово:
-```bash
-cd deploy
-docker compose exec -T windmill-db psql -U postgres -d windmill -c "GRANT windmill_admin TO windmill;"
-docker compose exec -T windmill-db psql -U postgres -d windmill -c "GRANT windmill_user TO windmill;"
-docker compose restart windmill windmill-worker
-```
-
 #### Проверка, что интеграция реально работает
 
 1. Проверить статус подключения в Windmill:
    - `Settings -> Workspace -> Native Triggers -> Nextcloud`
    - Статус должен быть `Connected`.
+![alt text](images/image5.png)
 2. Создать тестовый flow:
    - `New Flow` -> блок `Triggers` -> `+` -> `Nextcloud`.
    - В списке событий должны быть доступны события (без ошибок `No events available`).
@@ -155,8 +138,7 @@ docker compose restart windmill windmill-worker
 cd table
 ```
 
-### user list
-#### Просмотр пользователей
+### Просмотр пользователей
 
 - Показать всех пользователей (только логины):
   ```bash
