@@ -86,7 +86,9 @@ docker compose down
 
 1. Откройте в браузере Windmill, доступный по адресу: http://windmill.local:8000
 2. Войдите в workspace admin. 
-<img src="images/image1.png" alt="Страница входа Windmill" width="500">
+  <p align="center">
+  <img src="images/image1.png" alt="Вход в Windmill" width="400">
+  </p>
 3. Перейдите `Settings -> Workspace -> Native Triggers`.
 ![alt text](images/image2.png)
 ![alt text](images/image3.png)
