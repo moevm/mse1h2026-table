@@ -85,7 +85,8 @@ docker compose down
 Далее настройка OAuth-подключения в Windmill:
 
 1. Откройте в браузере Windmill, доступный по адресу: http://windmill.local:8000
-2. Войдите в workspace admin. ![alt text](images/image1.png)
+2. Войдите в workspace admin. 
+<img src="images/image1.png" alt="Страница входа Windmill" width="500">
 3. Перейдите `Settings -> Workspace -> Native Triggers`.
 ![alt text](images/image2.png)
 ![alt text](images/image3.png)
