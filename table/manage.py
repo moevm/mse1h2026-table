@@ -13,6 +13,7 @@ from scripts.users import (
     users_csv_delete,
     users_list,
 )
+from scripts.backup import backup_create, backup_list
 
 
 def add_nextcloud_args(parser):
@@ -44,27 +45,6 @@ def load_config(args):
 
 
 # BACKUP
-
-def backup_create(args):
-    # backup create
-    backup_id = f"backup-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
-    print("[STUB] Creating backup")
-    success({
-        "backup_id": backup_id,
-        "status": "created",
-        "timestamp": now()
-    }, args.output)
-
-
-def backup_list(args):
-    # backup list
-    success({
-        "backups": [
-            {"id": "backup-20260220010101", "size": "120MB"},
-            {"id": "backup-20260221010101", "size": "130MB"}
-        ]
-    }, args.output)
-
 
 def backup_restore(args):
     # backup restore [backup_id]
@@ -245,7 +225,12 @@ def main():
     backup = subparsers.add_parser("backup")
     backup_sub = backup.add_subparsers(dest="action", required=True)
 
-    backup_sub.add_parser("create").set_defaults(func=backup_create)
+    backup_create_parser = backup_sub.add_parser("create")
+    backup_create_parser.add_argument("--exclude-db", action="store_true", help="Exclude database dump")
+    backup_create_parser.add_argument("--exclude-data", action="store_true", help="Exclude data folder archive")
+    backup_create_parser.add_argument("--name", help="Optional backup name")
+    backup_create_parser.set_defaults(func=backup_create)
+
     backup_sub.add_parser("list").set_defaults(func=backup_list)
 
     restore = backup_sub.add_parser("restore")
