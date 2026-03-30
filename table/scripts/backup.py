@@ -1,11 +1,11 @@
 import datetime
 import subprocess
-import tempfile
 import tarfile
+import tempfile
 from pathlib import Path
 
-from scripts.utils import success, error, now
 from scripts.deploy import get_compose_dir, get_compose_file
+from scripts.utils import error, now, success
 
 
 def get_backup_dir(args):
@@ -30,7 +30,11 @@ def backup_create(args):
     if not compose_file.exists():
         error(f"Не найден docker-compose.yml: {compose_file}")
 
-    backup_name = args.name if getattr(args, "name", None) else f"backup-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
+    backup_name = (
+        args.name
+        if getattr(args, "name", None)
+        else f"backup-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
+    )
 
     backup_base = get_backup_dir(args)
     backup_base.mkdir(parents=True, exist_ok=True)
@@ -50,18 +54,33 @@ def backup_create(args):
         needs_maintenance = any(c in components for c in ["core", "data"])
         if needs_maintenance:
             cmd_maintenance_on = [
-                "docker", "compose", "-f", str(compose_file),
-                "exec", "-T", "app",
-                "php", "/var/www/html/occ", "maintenance:mode", "--on"
+                "docker",
+                "compose",
+                "-f",
+                str(compose_file),
+                "exec",
+                "-T",
+                "app",
+                "php",
+                "/var/www/html/occ",
+                "maintenance:mode",
+                "--on",
             ]
             subprocess.run(cmd_maintenance_on, cwd=compose_dir, check=True)
 
         if "core" in components:
             db_file = backup_dir / "nextcloud_db_dump.sql"
             cmd_db = [
-                "docker", "compose", "-f", str(compose_file),
-                "exec", "-T", "db",
-                "sh", "-c", "pg_dump -U \"$POSTGRES_USER\" \"${POSTGRES_DB:-nextcloud}\""
+                "docker",
+                "compose",
+                "-f",
+                str(compose_file),
+                "exec",
+                "-T",
+                "db",
+                "sh",
+                "-c",
+                'pg_dump -U "$POSTGRES_USER" "${POSTGRES_DB:-nextcloud}"',
             ]
             with open(db_file, "w", encoding="utf-8") as f:
                 subprocess.run(cmd_db, cwd=compose_dir, stdout=f, check=True)
@@ -70,9 +89,16 @@ def backup_create(args):
         if "windmill" in components:
             w_db_file = backup_dir / "windmill_db_dump.sql"
             cmd_w_db = [
-                "docker", "compose", "-f", str(compose_file),
-                "exec", "-T", "windmill-db",
-                "sh", "-c", "pg_dump -U \"${WINDMILL_DB_USER:-windmill}\" windmill"
+                "docker",
+                "compose",
+                "-f",
+                str(compose_file),
+                "exec",
+                "-T",
+                "windmill-db",
+                "sh",
+                "-c",
+                'pg_dump -U "${WINDMILL_DB_USER:-windmill}" windmill',
             ]
             with open(w_db_file, "w", encoding="utf-8") as f:
                 subprocess.run(cmd_w_db, cwd=compose_dir, stdout=f, check=False)
@@ -81,9 +107,20 @@ def backup_create(args):
         if "core" in components:
             core_file = backup_dir / "nextcloud_core.tar.gz"
             cmd_core = [
-                "docker", "compose", "-f", str(compose_file),
-                "exec", "-T", "app",
-                "tar", "czf", "-", "-C", "/var/www/html", "config", "themes"
+                "docker",
+                "compose",
+                "-f",
+                str(compose_file),
+                "exec",
+                "-T",
+                "app",
+                "tar",
+                "czf",
+                "-",
+                "-C",
+                "/var/www/html",
+                "config",
+                "themes",
             ]
             with open(core_file, "wb") as f:
                 subprocess.run(cmd_core, cwd=compose_dir, stdout=f, check=True)
@@ -92,9 +129,19 @@ def backup_create(args):
         if "data" in components:
             data_file = backup_dir / "nextcloud_data.tar.gz"
             cmd_data = [
-                "docker", "compose", "-f", str(compose_file),
-                "exec", "-T", "app",
-                "tar", "czf", "-", "-C", "/var/www/html", "data"
+                "docker",
+                "compose",
+                "-f",
+                str(compose_file),
+                "exec",
+                "-T",
+                "app",
+                "tar",
+                "czf",
+                "-",
+                "-C",
+                "/var/www/html",
+                "data",
             ]
             with open(data_file, "wb") as f:
                 subprocess.run(cmd_data, cwd=compose_dir, stdout=f, check=True)
@@ -106,11 +153,19 @@ def backup_create(args):
     except subprocess.CalledProcessError as e:
         error(f"Ошибка при создании бэкапа: {e}")
     finally:
-        if 'needs_maintenance' in locals() and needs_maintenance:
+        if "needs_maintenance" in locals() and needs_maintenance:
             cmd_maintenance_off = [
-                "docker", "compose", "-f", str(compose_file),
-                "exec", "-T", "app",
-                "php", "/var/www/html/occ", "maintenance:mode", "--off"
+                "docker",
+                "compose",
+                "-f",
+                str(compose_file),
+                "exec",
+                "-T",
+                "app",
+                "php",
+                "/var/www/html/occ",
+                "maintenance:mode",
+                "--off",
             ]
             subprocess.run(cmd_maintenance_off, cwd=compose_dir, check=False)
         try:
@@ -118,12 +173,15 @@ def backup_create(args):
         except Exception:
             pass
 
-    success({
-        "backup_id": backup_name,
-        "backup_archive": str(backup_archive),
-        "status": "created",
-        "timestamp": now()
-    }, args.output)
+    success(
+        {
+            "backup_id": backup_name,
+            "backup_archive": str(backup_archive),
+            "status": "created",
+            "timestamp": now(),
+        },
+        args.output,
+    )
 
 
 def backup_list(args):
@@ -136,12 +194,16 @@ def backup_list(args):
         stat = file.stat()
         size_mb = stat.st_size / (1024 * 1024)
         name = file.name[:-7] if file.name.endswith(".tar.gz") else file.name
-        backups.append({
-            "id": name,
-            "filename": file.name,
-            "size_mb": round(size_mb, 2),
-            "created_at": datetime.datetime.fromtimestamp(stat.st_mtime).isoformat()
-        })
+        backups.append(
+            {
+                "id": name,
+                "filename": file.name,
+                "size_mb": round(size_mb, 2),
+                "created_at": datetime.datetime.fromtimestamp(
+                    stat.st_mtime
+                ).isoformat(),
+            }
+        )
 
     backups.sort(key=lambda x: x["created_at"], reverse=True)
 

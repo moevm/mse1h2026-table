@@ -1,11 +1,10 @@
 import argparse
-import datetime
 import os
 import yaml
 
 from scripts.deploy import deploy_up, deploy_down, deploy_demo, deploy_status
 from scripts.upload_xlsx import upload_batch
-from scripts.utils import success, error, now
+from scripts.utils import success, error
 from scripts.users import (
     users_create,
     users_delete,
