@@ -101,9 +101,7 @@ def backup_create(args):
                 'pg_dump -U "${WINDMILL_DB_USER:-windmill}" windmill',
             ]
             with open(w_db_file, "w", encoding="utf-8") as f:
-                subprocess.run(
-                    cmd_w_db, cwd=compose_dir, stdout=f, check=False
-                )
+                subprocess.run(cmd_w_db, cwd=compose_dir, stdout=f, check=False)
             result_files.append(str(w_db_file))
 
         if "core" in components:
