@@ -226,8 +226,11 @@ def main():
     backup_sub = backup.add_subparsers(dest="action", required=True)
 
     backup_create_parser = backup_sub.add_parser("create")
-    backup_create_parser.add_argument("--exclude-db", action="store_true", help="Exclude database dump")
-    backup_create_parser.add_argument("--exclude-data", action="store_true", help="Exclude data folder archive")
+    backup_create_parser.add_argument(
+        "--components", nargs="+", default=["all"],
+        choices=["all", "core", "data", "windmill"],
+        help="Components to backup (default: all)"
+    )
     backup_create_parser.add_argument("--name", help="Optional backup name")
     backup_create_parser.set_defaults(func=backup_create)
 

@@ -43,14 +43,20 @@ def backup_create(args):
         temp_dir_obj = tempfile.TemporaryDirectory()
         backup_dir = Path(temp_dir_obj.name)
 
-        cmd_maintenance_on = [
-            "docker", "compose", "-f", str(compose_file),
-            "exec", "-T", "app",
-            "php", "/var/www/html/occ", "maintenance:mode", "--on"
-        ]
-        subprocess.run(cmd_maintenance_on, cwd=compose_dir, check=True)
+        components = getattr(args, "components", ["all"])
+        if "all" in components:
+            components = ["core", "data", "windmill"]
 
-        if not getattr(args, "exclude_db", False):
+        needs_maintenance = any(c in components for c in ["core", "data"])
+        if needs_maintenance:
+            cmd_maintenance_on = [
+                "docker", "compose", "-f", str(compose_file),
+                "exec", "-T", "app",
+                "php", "/var/www/html/occ", "maintenance:mode", "--on"
+            ]
+            subprocess.run(cmd_maintenance_on, cwd=compose_dir, check=True)
+
+        if "core" in components:
             db_file = backup_dir / "nextcloud_db_dump.sql"
             cmd_db = [
                 "docker", "compose", "-f", str(compose_file),
@@ -61,6 +67,7 @@ def backup_create(args):
                 subprocess.run(cmd_db, cwd=compose_dir, stdout=f, check=True)
             result_files.append(str(db_file))
 
+        if "windmill" in components:
             w_db_file = backup_dir / "windmill_db_dump.sql"
             cmd_w_db = [
                 "docker", "compose", "-f", str(compose_file),
@@ -71,12 +78,23 @@ def backup_create(args):
                 subprocess.run(cmd_w_db, cwd=compose_dir, stdout=f, check=False)
             result_files.append(str(w_db_file))
 
-        if not getattr(args, "exclude_data", False):
+        if "core" in components:
+            core_file = backup_dir / "nextcloud_core.tar.gz"
+            cmd_core = [
+                "docker", "compose", "-f", str(compose_file),
+                "exec", "-T", "app",
+                "tar", "czf", "-", "-C", "/var/www/html", "config", "themes"
+            ]
+            with open(core_file, "wb") as f:
+                subprocess.run(cmd_core, cwd=compose_dir, stdout=f, check=True)
+            result_files.append(str(core_file))
+
+        if "data" in components:
             data_file = backup_dir / "nextcloud_data.tar.gz"
             cmd_data = [
                 "docker", "compose", "-f", str(compose_file),
                 "exec", "-T", "app",
-                "tar", "czf", "-", "-C", "/var/www/html", "config", "data", "themes"
+                "tar", "czf", "-", "-C", "/var/www/html", "data"
             ]
             with open(data_file, "wb") as f:
                 subprocess.run(cmd_data, cwd=compose_dir, stdout=f, check=True)
@@ -88,12 +106,13 @@ def backup_create(args):
     except subprocess.CalledProcessError as e:
         error(f"Ошибка при создании бэкапа: {e}")
     finally:
-        cmd_maintenance_off = [
-            "docker", "compose", "-f", str(compose_file),
-            "exec", "-T", "app",
-            "php", "/var/www/html/occ", "maintenance:mode", "--off"
-        ]
-        subprocess.run(cmd_maintenance_off, cwd=compose_dir, check=False)
+        if 'needs_maintenance' in locals() and needs_maintenance:
+            cmd_maintenance_off = [
+                "docker", "compose", "-f", str(compose_file),
+                "exec", "-T", "app",
+                "php", "/var/www/html/occ", "maintenance:mode", "--off"
+            ]
+            subprocess.run(cmd_maintenance_off, cwd=compose_dir, check=False)
         try:
             temp_dir_obj.cleanup()
         except Exception:
