@@ -72,11 +72,11 @@ def backup_create(args):
             result_files.append(str(w_db_file))
 
         if not getattr(args, "exclude_data", False):
-            data_file = backup_dir / "data_backup.tar.gz"
+            data_file = backup_dir / "nextcloud_data.tar.gz"
             cmd_data = [
                 "docker", "compose", "-f", str(compose_file),
                 "exec", "-T", "app",
-                "tar", "czf", "-", "-C", "/var/www/html", "data"
+                "tar", "czf", "-", "-C", "/var/www/html", "config", "data", "themes"
             ]
             with open(data_file, "wb") as f:
                 subprocess.run(cmd_data, cwd=compose_dir, stdout=f, check=True)
