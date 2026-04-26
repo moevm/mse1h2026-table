@@ -8,6 +8,9 @@ NEXTCLOUD_PATH="/var/www/html"
 # Переменные состояния
 LAST_CRON_RUN=0
 
+# Обработка корректного завершения (Docker stop)
+trap "echo 'Stopping worker...'; exit 0" SIGTERM SIGINT
+
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
 }
@@ -23,34 +26,36 @@ until php_occ status 2>/dev/null | grep -q "installed: true"; do
     sleep 5
 done
 
+log "Cron started (Sync: ${SYNC_INTERVAL}s, Cron: ${CRON_INTERVAL}s)"
+
 while true; do
-    START_TIME=$(date +%s)
+    LOOP_START=$(date +%s)
 
     # 1. ПРИОРИТЕТ: Синхронизация форм
     # Получаем вывод и очищаем его: оставляем только то, что начинается с '[' (начало JSON массива)
     RAW_OUTPUT=$(php_occ background-job:list --output=json 2>/dev/null)
     CLEAN_JSON=$(echo "$RAW_OUTPUT" | sed -n '/^\[/,$p')
 
-    # Проверяем, не пустой ли JSON и валиден ли он
-    if echo "$CLEAN_JSON" | jq -e '. == []' >/dev/null 2>&1; then
-        : # Задач нет, ничего не делаем
-    elif [ -n "$CLEAN_JSON" ]; then
-        # Фильтруем нужные задачи
+    if [ -z "$CLEAN_JSON" ] || echo "$CLEAN_JSON" | jq -e '. == []' >/dev/null 2>&1; then
+        : # Задач нет
+    else
         JOBS=$(echo "$CLEAN_JSON" | jq -c '.[] | select(.class == "OCA\\Forms\\BackgroundJob\\SyncSubmissionsWithLinkedFileJob")' 2>/dev/null)
 
         if [ -n "$JOBS" ]; then
             echo "$JOBS" | while read -r JOB; do
+                JOB_START=$(date +%s)
                 JOB_ID=$(echo "$JOB" | jq -r '.id')
                 ARG=$(echo "$JOB" | jq -r '.argument')
 
-                log "EXPORT: Form (JOB_ID: $JOB_ID, ARG: $ARG)"
-
-                # Выполняем конкретную задачу
                 OUTPUT=$(php_occ background-job:execute "$JOB_ID" 2>&1)
-                if [ $? -eq 0 ]; then
-                    log "SUCCESS: Job $JOB_ID completed."
+                EXIT_CODE=$?
+                JOB_END=$(date +%s)
+                DURATION=$((JOB_END - JOB_START))
+
+                if [ $EXIT_CODE -eq 0 ]; then
+                    log "JOB: Form (ID: $JOB_ID, ARG: $ARG) - OK (${DURATION}s)"
                 else
-                    log "ERROR: Job $JOB_ID. Output: $OUTPUT"
+                    log "ERROR: Job $JOB_ID failed (${DURATION}s). Output: $OUTPUT"
                 fi
             done
         fi
@@ -59,15 +64,24 @@ while true; do
     # 2. ТАЙМЕР: Стандартный cron.php
     CURRENT_TIME=$(date +%s)
     if [ $((CURRENT_TIME - LAST_CRON_RUN)) -ge "$CRON_INTERVAL" ]; then
-        log "CRON START: Scheduled cron.php"
-        php -d memory_limit=512M -f "$NEXTCLOUD_PATH/cron.php"
+        CRON_START=$(date +%s)
+
+        php -d memory_limit=512M -f "$NEXTCLOUD_PATH/cron.php" > /dev/null 2>&1
+
         LAST_CRON_RUN=$(date +%s)
-        log "CRON COMPLETED: Scheduled cron.php"
+        DURATION=$((LAST_CRON_RUN - CRON_START))
+        log "CRON: System tasks completed (${DURATION}s)"
     fi
 
     # 3. КОРРЕКЦИЯ ТАЙМЕРА
-    END_TIME=$(date +%s)
-    SLEEP_TIME=$((SYNC_INTERVAL - (END_TIME - START_TIME)))
-    [ "$SLEEP_TIME" -le 0 ] && SLEEP_TIME=1
-    sleep "$SLEEP_TIME"
+    LOOP_END=$(date +%s)
+    SLEEP_TIME=$((SYNC_INTERVAL - (LOOP_END - LOOP_START)))
+
+    # Чтобы контейнер мгновенно реагировал на стоп, спим короткими отрезками
+    # либо просто используем sleep, Bash прервет его при получении сигнала trap
+    if [ "$SLEEP_TIME" -gt 0 ]; then
+        sleep "$SLEEP_TIME" & wait $!
+    else
+        sleep 1 & wait $!
+    fi
 done
