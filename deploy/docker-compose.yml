@@ -98,15 +98,12 @@ services:
         php /var/www/html/occ config:system:set overwriteprotocol --value="$${NEXTCLOUD_SCHEME}" --type=string;
         php /var/www/html/occ config:system:set trusted_proxies --value="$${NEXTCLOUD_TRUSTED_PROXIES}" --type=json;
 
-        php /var/www/html/occ app:enable oauth2;
-        php /var/www/html/occ app:install webhook_listeners || php /var/www/html/occ app:enable webhook_listeners;
         php /var/www/html/occ app:install forms || php /var/www/html/occ app:enable forms;
-        php /var/www/html/occ app:install integration_windmill || php /var/www/html/occ app:enable integration_windmill;
 
         php /var/www/html/occ maintenance:repair --include-expensive;
         php /var/www/html/occ db:add-missing-indices;
 
-        echo "ONLYOFFICE and Windmill integration apps configured OK";
+        echo "ONLYOFFICE and Forms integration apps configured OK";
       '
     restart: "no"
 
@@ -132,61 +129,8 @@ services:
         exec sudo -u www-data bash /usr/local/bin/cron-worker.sh
       "
 
-  windmill-db:
-    container_name: windmill-db
-    image: postgres:18
-    restart: always
-    environment:
-      POSTGRES_DB: windmill
-      POSTGRES_USER: ${WINDMILL_DB_USER}
-      POSTGRES_PASSWORD: ${WINDMILL_DB_PASSWORD}
-    volumes:
-      - windmill_db_data:/var/lib/postgresql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${WINDMILL_DB_USER}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  windmill:
-    container_name: windmill-server
-    image: ghcr.io/windmill-labs/windmill:1.657.2
-    restart: always
-    ports:
-      - "${WINDMILL_PORT}:8000"
-    environment:
-      - DATABASE_URL=postgres://${WINDMILL_DB_USER}:${WINDMILL_DB_PASSWORD}@windmill-db:5432/windmill?sslmode=disable
-      - BASE_URL=http://${NEXTCLOUD_HOST}:${WINDMILL_PORT}
-      - RUST_LOG=info
-    extra_hosts:
-      - "${NEXTCLOUD_HOST:-nextcloud.local}:host-gateway"
-    depends_on:
-      windmill-db:
-        condition: service_healthy
-    volumes:
-      - windmill_worker_logs:/tmp/windmill
-
-  windmill-worker:
-    container_name: windmill-worker
-    image: ghcr.io/windmill-labs/windmill:1.657.2
-    restart: always
-    command: windmill worker
-    environment:
-      - DATABASE_URL=postgres://${WINDMILL_DB_USER}:${WINDMILL_DB_PASSWORD}@windmill-db:5432/windmill?sslmode=disable
-      - BASE_URL=http://${NEXTCLOUD_HOST}:${WINDMILL_PORT}
-      - RUST_LOG=info
-    extra_hosts:
-      - "${NEXTCLOUD_HOST:-nextcloud.local}:host-gateway"
-    depends_on:
-      windmill-db:
-        condition: service_healthy
-    volumes:
-      - windmill_worker_logs:/tmp/windmill
-
 volumes:
   db_data:
   document_data:
   document_log:
   app_data:
-  windmill_db_data:
-  windmill_worker_logs:
