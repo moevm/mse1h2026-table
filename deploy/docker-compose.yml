@@ -69,6 +69,10 @@ services:
       - nginx
     volumes:
       - app_data:/var/www/html
+    environment:
+      - NEXTCLOUD_URL=${NEXTCLOUD_URL}
+      - NEXTCLOUD_TRUSTED_PROXIES=${NEXTCLOUD_TRUSTED_PROXIES}
+      - JWT_SECRET=${JWT_SECRET}
     entrypoint: >
       sh -c '
         echo "Waiting for Nextcloud to be INSTALLED...";
@@ -78,7 +82,7 @@ services:
 
         php /var/www/html/occ app:install onlyoffice || php /var/www/html/occ app:enable onlyoffice;
 
-        NEXTCLOUD_URL="${NEXTCLOUD_URL}"
+        NEXTCLOUD_URL="$${NEXTCLOUD_URL}"
         NEXTCLOUD_SCHEME="$${NEXTCLOUD_URL%%://*}"
         NEXTCLOUD_HOSTPORT="$${NEXTCLOUD_URL#*://}"
         NEXTCLOUD_HOSTPORT="$${NEXTCLOUD_HOSTPORT%%/*}"
@@ -86,13 +90,13 @@ services:
         php /var/www/html/occ config:app:set onlyoffice DocumentServerUrl --value="$${NEXTCLOUD_URL}/ds-vpath/";
         php /var/www/html/occ config:app:set onlyoffice DocumentServerInternalUrl --value="http://onlyoffice-document-server/";
         php /var/www/html/occ config:app:set onlyoffice StorageUrl --value="http://nginx-server/";
-        php /var/www/html/occ config:app:set onlyoffice jwt_secret --value="${JWT_SECRET}";
+        php /var/www/html/occ config:app:set onlyoffice jwt_secret --value="$${JWT_SECRET}";
         php /var/www/html/occ config:app:set onlyoffice customizationForcesave --value=true
 
         php /var/www/html/occ config:system:set overwrite.cli.url --value="$${NEXTCLOUD_URL}" --type=string;
         php /var/www/html/occ config:system:set overwritehost --value="$${NEXTCLOUD_HOSTPORT}" --type=string;
         php /var/www/html/occ config:system:set overwriteprotocol --value="$${NEXTCLOUD_SCHEME}" --type=string;
-        php /var/www/html/occ config:system:set trusted_proxies --value="${NEXTCLOUD_TRUSTED_PROXIES}" --type=json;
+        php /var/www/html/occ config:system:set trusted_proxies --value="$${NEXTCLOUD_TRUSTED_PROXIES}" --type=json;
 
         php /var/www/html/occ app:enable oauth2;
         php /var/www/html/occ app:install webhook_listeners || php /var/www/html/occ app:enable webhook_listeners;
