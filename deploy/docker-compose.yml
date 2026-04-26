@@ -11,16 +11,27 @@ services:
       - POSTGRES_DB=${POSTGRES_DB:-nextcloud}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - TZ=${TZ}
     volumes:
       - app_data:/var/www/html
+      - ./php-fpm-logging.conf:/usr/local/etc/php-fpm.d/zz-logging.conf:ro,Z # disable php access logging, nginx already logs them
     depends_on:
-      - db
-      - onlyoffice-document-server
+      db:
+        condition: service_healthy
+        restart: true
+      onlyoffice-document-server:
+        condition: service_started
 
   db:
     image: postgres:18
     container_name: nextcloud-db
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+      timeout: 10s
     environment:
       - POSTGRES_DB=${POSTGRES_DB:-nextcloud}
       - POSTGRES_USER=${POSTGRES_USER}
@@ -94,8 +105,12 @@ services:
     container_name: nextcloud-cron-worker
     restart: always
     depends_on:
-      - app
-      - db
+      app:
+        condition: service_started
+      db:
+        condition: service_healthy
+      nextcloud-init:
+        condition: service_completed_successfully
     volumes:
       - app_data:/var/www/html
       - ./cron-worker.sh:/usr/local/bin/cron-worker.sh:ro,Z
