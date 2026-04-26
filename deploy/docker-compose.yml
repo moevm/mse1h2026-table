@@ -92,7 +92,7 @@ services:
         php /var/www/html/occ config:system:set overwrite.cli.url --value="$${NEXTCLOUD_URL}" --type=string;
         php /var/www/html/occ config:system:set overwritehost --value="$${NEXTCLOUD_HOSTPORT}" --type=string;
         php /var/www/html/occ config:system:set overwriteprotocol --value="$${NEXTCLOUD_SCHEME}" --type=string;
-        php /var/www/html/occ config:system:set trusted_proxies --value="$${NEXTCLOUD_TRUSTED_PROXIES}" --type=json;
+        php /var/www/html/occ config:system:set trusted_proxies --value="${NEXTCLOUD_TRUSTED_PROXIES}" --type=json;
 
         php /var/www/html/occ app:enable oauth2;
         php /var/www/html/occ app:install webhook_listeners || php /var/www/html/occ app:enable webhook_listeners;
