@@ -126,6 +126,8 @@ services:
     volumes:
       - app_data:/var/www/html
       - ./cron-worker.sh:/usr/local/bin/cron-worker.sh:ro,Z
+    environment:
+      - TZ=${TZ}
     entrypoint: >
       sh -c "
         echo 'installing (jq, sudo)...';
