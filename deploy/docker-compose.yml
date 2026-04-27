@@ -53,6 +53,8 @@ services:
     container_name: nginx-server
     image: nginx:stable-alpine
     restart: always
+    environment:
+      - TZ=${TZ}
     ports:
       - "${NEXTCLOUD_PORT:-8080}:80"
     volumes:
@@ -73,6 +75,7 @@ services:
       - NEXTCLOUD_URL=${NEXTCLOUD_URL}
       - NEXTCLOUD_TRUSTED_PROXIES=${NEXTCLOUD_TRUSTED_PROXIES}
       - JWT_SECRET=${JWT_SECRET}
+      - TZ=${TZ}
     entrypoint: >
       sh -c '
         echo "Waiting for Nextcloud to be INSTALLED...";
@@ -84,8 +87,9 @@ services:
 
         NEXTCLOUD_URL="$${NEXTCLOUD_URL}"
         NEXTCLOUD_SCHEME="$${NEXTCLOUD_URL%%://*}"
-        NEXTCLOUD_HOSTPORT="$${NEXTCLOUD_URL#*://}"
-        NEXTCLOUD_HOSTPORT="$${NEXTCLOUD_HOSTPORT%%/*}"
+        NEXTCLOUD_HOST="$${NEXTCLOUD_URL#*://}"
+        NEXTCLOUD_HOST="$${NEXTCLOUD_HOST%%/*}"
+        NEXTCLOUD_HOST="$${NEXTCLOUD_HOST%%:*}"
 
         php /var/www/html/occ config:app:set onlyoffice DocumentServerUrl --value="$${NEXTCLOUD_URL}/ds-vpath/";
         php /var/www/html/occ config:app:set onlyoffice DocumentServerInternalUrl --value="http://onlyoffice-document-server/";
@@ -94,9 +98,10 @@ services:
         php /var/www/html/occ config:app:set onlyoffice customizationForcesave --value=true
 
         php /var/www/html/occ config:system:set overwrite.cli.url --value="$${NEXTCLOUD_URL}" --type=string;
-        php /var/www/html/occ config:system:set overwritehost --value="$${NEXTCLOUD_HOSTPORT}" --type=string;
         php /var/www/html/occ config:system:set overwriteprotocol --value="$${NEXTCLOUD_SCHEME}" --type=string;
         php /var/www/html/occ config:system:set trusted_proxies --value="$${NEXTCLOUD_TRUSTED_PROXIES}" --type=json;
+        php /var/www/html/occ config:system:set trusted_domains 0 --value="nginx-server" --type=string;
+        php /var/www/html/occ config:system:set trusted_domains 1 --value="$${NEXTCLOUD_HOST}" --type=string;
 
         php /var/www/html/occ app:install forms || php /var/www/html/occ app:enable forms;
 
