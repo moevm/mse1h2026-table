@@ -227,7 +227,7 @@ def main():
     backup_create_parser = backup_sub.add_parser("create")
     backup_create_parser.add_argument(
         "--components", nargs="+", default=["all"],
-        choices=["all", "core", "data", "windmill"],
+        choices=["all", "core", "data"],
         help="Components to backup (default: all)"
     )
     backup_create_parser.add_argument("--name", help="Optional backup name")
