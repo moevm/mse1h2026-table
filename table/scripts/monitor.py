@@ -10,7 +10,6 @@ from typing import Optional, Tuple
 from scripts.utils import now, print_output
 
 
-
 def _run_command(cmd):
     try:
         return subprocess.run(
