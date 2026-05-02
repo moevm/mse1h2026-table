@@ -189,7 +189,9 @@ def get_disk_free_gb(path: str) -> Optional[float]:
     return usage.free / (1024 ** 3)
 
 
-def get_response_time_ms(url: str, timeout: float = 10.0) -> Tuple[Optional[int], Optional[int], Optional[str]]:
+def get_response_time_ms(
+    url: str, timeout: float = 10.0
+) -> Tuple[Optional[int], Optional[int], Optional[str]]:
     if not url:
         return None, None, None
 
