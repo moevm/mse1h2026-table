@@ -6,6 +6,7 @@ import yaml
 from scripts.deploy import deploy_up, deploy_down, deploy_demo, deploy_status
 from scripts.upload_xlsx import upload_batch
 from scripts.utils import success, error, now
+from scripts.monitor import monitor_resources
 from scripts.users import (
     users_create,
     users_delete,
@@ -83,15 +84,6 @@ def monitor_status(args):
         "overall": "OK",
         "tables": {"status": "ok", "response_ms": 210},
         "forms": {"status": "ok", "response_ms": 150}
-    }, args.output)
-
-
-def monitor_resources(args):
-    # monitor resources
-    success({
-        "cpu_percent": 32,
-        "memory_mb": 1024,
-        "disk_free_gb": 120
     }, args.output)
 
 
@@ -257,7 +249,39 @@ def main():
     monitor_sub = monitor.add_subparsers(dest="action", required=True)
 
     monitor_sub.add_parser("status").set_defaults(func=monitor_status)
-    monitor_sub.add_parser("resources").set_defaults(func=monitor_resources)
+
+    resources = monitor_sub.add_parser("resources")
+    resources.add_argument(
+        "--url", default="http://localhost:8080",
+        help="Base URL for response time check"
+    )
+    resources.add_argument(
+        "--path", default="/",
+        help="Path to request for response time check"
+    )
+    resources.add_argument(
+        "--response-timeout", dest="response_timeout",
+        type=float, default=10.0,
+        help="Response time timeout in seconds"
+    )
+    resources.add_argument(
+        "--interval", type=float, default=0.0,
+        help="Interval in seconds, 0 for one-shot"
+    )
+    resources.add_argument(
+        "--count", type=int, default=1,
+        help="Number of samples, 0 for infinite"
+    )
+    resources.add_argument(
+        "--disk-path", dest="disk_path", default=".",
+        help="Path to check disk free space"
+    )
+    resources.add_argument(
+        "--cpu-sample-interval", dest="cpu_sample_interval",
+        type=float, default=0.2,
+        help="CPU sample interval in seconds"
+    )
+    resources.set_defaults(func=monitor_resources)
 
     # LOADTEST
     loadtest = subparsers.add_parser("loadtest")
