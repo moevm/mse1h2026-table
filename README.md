@@ -172,3 +172,7 @@ cd table
 ```bash
   python manage.py monitor resources
 ```
+- Собирать метрики периодически (JSON на каждую итерацию):
+```bash
+  python manage.py monitor resources --output json --interval 5 --count 0
+```
