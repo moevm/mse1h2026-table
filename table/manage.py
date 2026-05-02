@@ -1,8 +1,10 @@
 import argparse
 import os
 import yaml
+from pathlib import Path
 
 from scripts.deploy import deploy_up, deploy_down, deploy_demo, deploy_status
+from scripts.export_manager import ExportManager, ExportConfigurationError
 from scripts.upload_xlsx import upload_batch
 from scripts.utils import success, error
 from scripts.users import (
@@ -31,16 +33,24 @@ def add_nextcloud_args(parser):
 
 def load_config(args):
     # --config [path]
-    cfg_path = args.config
-    if not os.path.exists(cfg_path):
+    if args.config:
+        cfg_path = Path(args.config)
+    else:
+        cfg_path = Path(__file__).with_name("config.yaml")
+
+    if not cfg_path.is_absolute():
+        cfg_path = (Path.cwd() / cfg_path).resolve()
+
+    if not cfg_path.exists():
         error(f"File not found at path {cfg_path}")
+
     try:
         with open(cfg_path, "r", encoding="utf-8") as f:
-            data = yaml.safe_load(f)
+            data = yaml.safe_load(f) or {}
     except yaml.YAMLError:
         error("Invalid YAML file")
 
-    return data
+    return data, str(cfg_path.parent)
 
 
 # BACKUP
@@ -88,14 +98,62 @@ def loadtest_run(args):
 
 # EXPORT
 
+def _parse_kv_pairs(items):
+    result = {}
+    for item in items or []:
+        if "=" not in item:
+            error(f"Invalid --set value '{item}'. Expected KEY=VALUE")
+        key, value = item.split("=", 1)
+        key = key.strip()
+        if not key:
+            error(f"Invalid --set value '{item}'. Key is empty")
+        result[key] = value
+    return result
+
+
 def export_run(args):
-    # export [module]
-    print(f"[STUB] Running export module: {args.module}")
-    success({
-        "module": args.module,
-        "status": "completed",
-        "rows_exported": 120
-    }, args.output)
+    manager = ExportManager(
+        args.project_dir,
+        getattr(args, "config_data", None),
+        config_base_dir=getattr(args, "config_dir", None),
+    )
+
+    try:
+        extra_context = _parse_kv_pairs(getattr(args, "set", []))
+        if getattr(args, "mode", None):
+            extra_context["mode"] = args.mode
+        if getattr(args, "no_xlsx", False):
+            extra_context["build_xlsx"] = False
+
+        artifact = manager.run(args.source, **extra_context)
+    except ExportConfigurationError as exc:
+        error(str(exc))
+
+    if not artifact.xlsx_path:
+        error(f"Источник '{args.source}' не создал xlsx-файл")
+
+    upload_config = {
+        "url": args.url,
+        "user": args.username,
+        "pass": args.password,
+    }
+
+    try:
+        upload_result = upload_batch(
+            config=upload_config,
+            file_path=artifact.xlsx_path,
+            dir_path=None,
+            dest=args.dest,
+            custom_name=args.name,
+            overwrite=args.overwrite,
+        )
+    except ValueError as e:
+        error(str(e))
+
+    if isinstance(upload_result, dict) and "error" in upload_result:
+        error(upload_result["error"])
+
+    success(upload_result, args.output)
 
 
 # UPLOAD
@@ -256,7 +314,32 @@ def main():
 
     # EXPORT
     export = subparsers.add_parser("export")
-    export.add_argument("module", choices=["gitlogger", "lms"])
+    export.add_argument(
+        "source",
+        help="Source name (for example: gitlogger, lms_stepik, lms_moodle, or any future module)"
+    )
+    export.add_argument(
+        "--mode",
+        default=None,
+        help="Source mode (for example: commits, issues, pull_requests, wikis...)"
+    )
+    export.add_argument(
+        "--set",
+        action="append",
+        default=[],
+        metavar="KEY=VALUE",
+        help="Extra context variables for templating in config. Can be repeated."
+    )
+    export.add_argument(
+        "--no-xlsx",
+        action="store_true",
+        help="Disable automatic XLSX generation from CSV"
+    )
+
+    add_nextcloud_args(export)
+    export.add_argument("--dest", default="/", help="Destination folder in Nextcloud")
+    export.add_argument("--name", help="Custom file name in Nextcloud")
+    export.add_argument("--overwrite", action="store_true", default=False)
     export.set_defaults(func=export_run)
 
     # UPLOAD
@@ -273,8 +356,9 @@ def main():
     args = parser.parse_args()
 
     if args.config:
-        config_data = load_config(args)
+        config_data, config_dir = load_config(args)
         args.config_data = config_data
+        args.config_dir = config_dir
         print("Configuration loaded")
     else:
         args.config_data = None
