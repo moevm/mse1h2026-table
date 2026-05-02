@@ -160,19 +160,52 @@ cd table
 
 ### Мониторинг и статус
 
-- Проверить статус всех компонентов системы:
+Коллектор метрик позволяет собирать показатели нагрузки системы: CPU, RAM, диск, время отклика HTTP, число сессий.
+
+#### Разовый замер метрик
+Вывести метрики в консоль:
 ```bash
-  python manage.py deploy status
+python manage.py monitor resources
 ```
-- Ждать полной готовности системы:
+
+#### Вывод в формате JSON
 ```bash
-  python manage.py deploy status --wait
+python manage.py --output json monitor resources
 ```
-- Посмотреть метрики ресурсов (CPU, RAM, диск):
+
+#### Проверить время отклика любого сервиса
+Можно указать URL и путь:
 ```bash
-  python manage.py monitor resources
+python manage.py --output json monitor resources --url http://localhost:8080 --path /status.php
 ```
-- Собирать метрики периодически (JSON на каждую итерацию):
+
+#### Периодический сбор метрик
+Собирать метрики каждые 5 секунд, выводить в консоль:
 ```bash
-  python manage.py monitor resources --output json --interval 5 --count 0
+python manage.py --output json monitor resources --interval 5 --count 0
 ```
+
+#### Сохранять метрики в отдельные JSON-файлы
+Каждый замер будет сохраняться в отдельный JSON-файл в указанной папке:
+```bash
+python manage.py --output json monitor resources --output-dir ./metrics
+```
+
+#### Сохранять метрики в файлы, без вывода в консоль
+Если не хотите видеть метрики в терминале, используйте `--quiet`:
+```bash
+python manage.py --output json monitor resources --output-dir ./metrics --quiet
+```
+
+#### Описание всех флагов и параметров
+
+- `--output json` — выводить метрики в формате JSON (по умолчанию — текст)
+- `--interval 5` — делать замер каждые 5 секунд
+- `--count 0` — делать замеры бесконечно (или укажите число, чтобы ограничить количество)
+- `--output-dir ./metrics` — сохранять каждый замер в отдельный файл в указанной папке
+- `--quiet` — не выводить ничего в консоль, только писать в файлы
+- `--url` и `--path` — задать адрес сервиса для проверки времени отклика (по умолчанию http://localhost:8080/)
+- `--disk-path` — указать, какой раздел диска мониторить (по умолчанию текущий)
+- `--cpu-sample-interval` — время усреднения для CPU (секунды, по умолчанию 0.2)
+
+**Важно:** флаги (`--output`, `--config`) всегда пишутся до команды (`monitor resources`).
