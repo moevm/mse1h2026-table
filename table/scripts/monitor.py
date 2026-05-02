@@ -212,12 +212,7 @@ def get_active_sessions() -> Tuple[Optional[int], Optional[str]]:
         proc = _run_command(["who"])
         if not proc or proc.returncode != 0:
             return None, None
-        
-        count = len([
-            line for line in proc.stdout.splitlines() 
-            if line.strip()
-        ])
-
+        count = len([line for line in proc.stdout.splitlines() if line.strip()])
         return count, "who"
 
     if system == "windows":
@@ -225,10 +220,8 @@ def get_active_sessions() -> Tuple[Optional[int], Optional[str]]:
         if not proc or proc.returncode != 0:
             return None, None
         lines = [line for line in proc.stdout.splitlines() if line.strip()]
-        
         if len(lines) <= 1:
             return 0, "query user"
-        
         return len(lines) - 1, "query user"
 
     return None, None
