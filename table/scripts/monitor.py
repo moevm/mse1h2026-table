@@ -213,7 +213,7 @@ def get_active_sessions() -> Tuple[Optional[int], Optional[str]]:
         if not proc or proc.returncode != 0:
             return None, None
         count = len([
-            line for line in proc.stdout.splitlines() 
+            line for line in proc.stdout.splitlines()
             if line.strip()
         ])
         return count, "who"
