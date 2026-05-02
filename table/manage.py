@@ -281,6 +281,14 @@ def main():
         type=float, default=0.2,
         help="CPU sample interval in seconds"
     )
+    resources.add_argument(
+        "--output-dir", dest="output_dir", default=None,
+        help="Directory to write JSON metrics files"
+    )
+    resources.add_argument(
+        "--quiet", action="store_true",
+        help="Disable stdout output"
+    )
     resources.set_defaults(func=monitor_resources)
 
     # LOADTEST

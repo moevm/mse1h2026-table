@@ -4,6 +4,7 @@ import shutil
 import subprocess
 import time
 import json
+import datetime
 import requests
 from typing import Optional, Tuple
 from scripts.utils import now, print_output
@@ -261,21 +262,47 @@ def collect_metrics(args):
     return data
 
 
+def _ensure_output_dir(path: str) -> str:
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def _build_output_path(output_dir: str) -> str:
+    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    filename = f"metrics_{ts}.json"
+    return os.path.join(output_dir, filename)
+
+
+def _write_payload(payload, output_dir: str) -> str:
+    output_dir = _ensure_output_dir(output_dir)
+    path = _build_output_path(output_dir)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, indent=2)
+    return path
+
+
 def monitor_resources(args):
     interval = max(args.interval, 0.0)
     count = args.count
 
     if interval <= 0 or count == 1:
-        print_output(collect_metrics(args), args.output)
+        payload = collect_metrics(args)
+        if args.output_dir:
+            _write_payload(payload, args.output_dir)
+        if not args.quiet:
+            print_output(payload, args.output)
         raise SystemExit(0)
 
     emitted = 0
     while True:
         payload = collect_metrics(args)
-        if args.output == "json":
-            print(json.dumps(payload, ensure_ascii=False))
-        else:
-            print_output(payload, args.output)
+        if args.output_dir:
+            _write_payload(payload, args.output_dir)
+        if not args.quiet:
+            if args.output == "json":
+                print(json.dumps(payload, ensure_ascii=False))
+            else:
+                print_output(payload, args.output)
         emitted += 1
 
         if count > 0 and emitted >= count:
