@@ -253,7 +253,9 @@ def collect_metrics(args):
         "timestamp": now(),
         "cpu_percent": round(cpu, 2) if cpu is not None else None,
         "memory_mb": round(mem_used, 2) if mem_used is not None else None,
-        "memory_total_mb": round(mem_total, 2) if mem_total is not None else None,
+        "memory_total_mb": (
+            round(mem_total, 2) if mem_total is not None else None
+        ),
         "disk_free_gb": round(disk_free, 2) if disk_free is not None else None,
         "response_ms": response_ms,
         "response_status": response_status,
