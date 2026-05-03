@@ -172,3 +172,59 @@ cd table
 ```bash
   python manage.py monitor resources
 ```
+
+### Импорт CSV в таблицу (адаптер)
+
+Загружает данные из произвольного CSV-файла (выгрузка GitLogger, LMS-экспортёра или любого другого источника) в существующую xlsx-таблицу в Nextcloud по принципу **upsert по ключу**: строки с совпадающим ключом обновляются, новые добавляются в конец, незатронутые остаются как есть. Если CSV содержит новые колонки - они добавляются в header таблицы.
+
+Минимальный пример (GitLogger commits):
+```bash
+python manage.py import \
+  --csv ./out.csv \
+  --target /Учебные_таблицы/Группа5300_коммиты.xlsx \
+  --key "commit id"
+```
+
+GitLogger issues по списку из нескольких репо - нужен композитный ключ:
+```bash
+python manage.py import \
+  --csv ./issues.csv \
+  --target /Учебные_таблицы/Issues.xlsx \
+  --key "repository name" --key number
+```
+
+Moodle экспортёр (`moodle_exporter.py`) - CSV с разделителем `;` и pandas-индексной колонкой:
+```bash
+python manage.py import \
+  --csv ./moodle_course_12345.csv \
+  --target /Учебные_таблицы/Курс12345_оценки.xlsx \
+  --key username \
+  --separator ";" \
+  --skip-columns 1
+```
+
+Все флаги:
+
+| Флаг | Обязателен | По умолчанию | Описание |
+|---|---|---|---|
+| `--csv PATH` | да | - | путь к локальному CSV-файлу |
+| `--target PATH` | да | - | путь к xlsx внутри Nextcloud (например `/Учебные_таблицы/Группа.xlsx`) |
+| `--key COL` | да | - | имя колонки-ключа; повторите флаг для составного ключа |
+| `--sheet NAME` | нет | первый лист | имя листа внутри xlsx |
+| `--separator C` | нет | `,` | разделитель полей в CSV (`;` для pandas/Moodle) |
+| `--encoding ENC` | нет | `utf-8` | кодировка CSV |
+| `--skip-columns N` | нет | `0` | сколько ведущих колонок CSV отбросить (полезно для pandas-index) |
+| `--create-if-missing` | нет | выкл. | создать пустой xlsx (и недостающие папки) если target не существует; без флага отсутствующий target - ошибка |
+
+Создание target вместе с импортом (если файла ещё нет) - флаг `--create-if-missing` создаст пустой xlsx и недостающие промежуточные папки:
+```bash
+python manage.py import --csv ./out.csv \
+  --target /Учебные_таблицы/Новая_папка/новая_таблица.xlsx \
+  --key "commit id" \
+  --create-if-missing
+```
+
+**Ограничения**: 
+- По умолчанию target xlsx должен существовать в Nextcloud (создайте через UI, через `manage.py upload`, или используйте `--create-if-missing`).
+- В момент импорта файл не должен быть открыт в OnlyOffice - иначе либо import получит HTTP 423 (locked), либо параллельные правки в редакторе будут перезаписаны при PUT.
+- Адаптер не парсит числа/даты - значения хранятся как строки, OnlyOffice сам определит формат при отображении.
