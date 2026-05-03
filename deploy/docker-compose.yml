@@ -15,6 +15,7 @@ services:
     volumes:
       - app_data:/var/www/html
       - ./php-fpm-logging.conf:/usr/local/etc/php-fpm.d/zz-logging.conf:ro,Z # disable php access logging, nginx already logs them
+      - ./php-fpm-pool.conf:/usr/local/etc/php-fpm.d/zzz-pool.conf:ro
     depends_on:
       db:
         condition: service_healthy
@@ -85,23 +86,25 @@ services:
 
         php /var/www/html/occ app:install onlyoffice || php /var/www/html/occ app:enable onlyoffice;
 
-        NEXTCLOUD_URL="$${NEXTCLOUD_URL}"
-        NEXTCLOUD_SCHEME="$${NEXTCLOUD_URL%%://*}"
-        NEXTCLOUD_HOST="$${NEXTCLOUD_URL#*://}"
-        NEXTCLOUD_HOST="$${NEXTCLOUD_HOST%%/*}"
-        NEXTCLOUD_HOST="$${NEXTCLOUD_HOST%%:*}"
-
-        php /var/www/html/occ config:app:set onlyoffice DocumentServerUrl --value="$${NEXTCLOUD_URL}/ds-vpath/";
-        php /var/www/html/occ config:app:set onlyoffice DocumentServerInternalUrl --value="http://onlyoffice-document-server/";
-        php /var/www/html/occ config:app:set onlyoffice StorageUrl --value="http://nginx-server/";
-        php /var/www/html/occ config:app:set onlyoffice jwt_secret --value="$${JWT_SECRET}";
+        php /var/www/html/occ config:app:set onlyoffice DocumentServerUrl --value='/ds-vpath/';
+        php /var/www/html/occ config:app:set onlyoffice DocumentServerInternalUrl --value='http://onlyoffice-document-server/';
+        php /var/www/html/occ config:app:set onlyoffice StorageUrl --value='http://nginx-server/';
+        php /var/www/html/occ config:app:set onlyoffice jwt_secret --value='${JWT_SECRET}';
         php /var/www/html/occ config:app:set onlyoffice customizationForcesave --value=true
 
-        php /var/www/html/occ config:system:set overwrite.cli.url --value="$${NEXTCLOUD_URL}" --type=string;
-        php /var/www/html/occ config:system:set overwriteprotocol --value="$${NEXTCLOUD_SCHEME}" --type=string;
-        php /var/www/html/occ config:system:set trusted_proxies --value="$${NEXTCLOUD_TRUSTED_PROXIES}" --type=json;
-        php /var/www/html/occ config:system:set trusted_domains 0 --value="nginx-server" --type=string;
-        php /var/www/html/occ config:system:set trusted_domains 1 --value="$${NEXTCLOUD_HOST}" --type=string;
+        php /var/www/html/occ config:system:set trusted_proxies 0 --value='nginx-server' --type=string;
+        php /var/www/html/occ config:system:set trusted_domains 0 --value='nginx-server' --type=string;
+        php /var/www/html/occ config:system:set trusted_domains 1 --value='${NEXTCLOUD_HOST}:${NEXTCLOUD_PORT}' --type=string;
+        php /var/www/html/occ config:system:set trusted_domains 2 --value='${NEXTCLOUD_HOST}' --type=string;
+        php /var/www/html/occ config:system:set trusted_domains 3 --value='localhost' --type=string;
+        php /var/www/html/occ config:system:set trusted_domains 4 --value='localhost:${NEXTCLOUD_PORT}' --type=string;
+        php /var/www/html/occ config:system:set trusted_domains 5 --value='127.0.0.1' --type=string;
+        php /var/www/html/occ config:system:set trusted_domains 6 --value='127.0.0.1:${NEXTCLOUD_PORT}' --type=string;
+
+        php /var/www/html/occ config:system:set memcache.local --value='\OC\Memcache\APCu' --type=string;
+        php /var/www/html/occ config:system:set appstoreenabled --value=false --type=boolean;
+        php /var/www/html/occ config:system:set has_internet_connection --value=false --type=boolean;
+        php /var/www/html/occ background:cron;
 
         php /var/www/html/occ app:install forms || php /var/www/html/occ app:enable forms;
 
