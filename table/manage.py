@@ -13,6 +13,7 @@ from scripts.users import (
     users_list,
 )
 from scripts.backup import backup_create, backup_list
+from scripts.restore import backup_restore
 
 
 def add_nextcloud_args(parser):
@@ -41,17 +42,6 @@ def load_config(args):
         error("Invalid YAML file")
 
     return data
-
-
-# BACKUP
-
-def backup_restore(args):
-    # backup restore [backup_id]
-    print(f"[STUB] Restoring backup {args.backup_id}")
-    success({
-        "backup_id": args.backup_id,
-        "status": "restored"
-    }, args.output)
 
 
 # MONITOR
@@ -237,6 +227,15 @@ def main():
 
     restore = backup_sub.add_parser("restore")
     restore.add_argument("backup_id")
+    restore.add_argument(
+        "--components", nargs="+", default=["all"],
+        choices=["all", "core", "data"],
+        help="Components to restore (default: all available in archive)"
+    )
+    restore.add_argument(
+        "--force", action="store_true",
+        help="Skip interactive confirmation (destructive)"
+    )
     restore.set_defaults(func=backup_restore)
 
     # MONITOR

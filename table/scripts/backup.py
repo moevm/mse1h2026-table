@@ -56,7 +56,8 @@ def _occ(compose_dir, compose_file, *occ_args, capture=False):
         "exec", "-T", "app", "php", "/var/www/html/occ", *occ_args
     ]
     return subprocess.run(
-        cmd, cwd=compose_dir, text=True, capture_output=capture
+        cmd, cwd=compose_dir, text=True, capture_output=capture,
+        stdin=subprocess.DEVNULL,
     )
 
 
@@ -92,7 +93,8 @@ def _du_in_container(compose_dir, compose_file, service, path):
         "exec", "-T", service, "sh", "-c", f"du -sb {path} 2>/dev/null"
     ]
     proc = subprocess.run(
-        cmd, cwd=compose_dir, text=True, capture_output=True
+        cmd, cwd=compose_dir, text=True, capture_output=True,
+        stdin=subprocess.DEVNULL,
     )
     if proc.returncode != 0 or not proc.stdout.strip():
         return None
@@ -157,7 +159,8 @@ def _stream_to_file(cmd, cwd, output_path, label):
     """Запустить команду и направить её stdout в файл побайтно."""
     with open(output_path, "wb") as f:
         proc = subprocess.run(
-            cmd, cwd=cwd, stdout=f, stderr=subprocess.PIPE, check=False
+            cmd, cwd=cwd, stdout=f, stderr=subprocess.PIPE, check=False,
+            stdin=subprocess.DEVNULL,
         )
     if proc.returncode != 0:
         err = proc.stderr.decode("utf-8", errors="replace").strip()
