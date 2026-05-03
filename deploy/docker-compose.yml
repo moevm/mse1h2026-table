@@ -3,10 +3,15 @@ services:
     container_name: app-server
     image: nextcloud:33.0-fpm
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "php /var/www/html/occ status 2>/dev/null | grep -q 'installed: true'"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
     environment:
       - NEXTCLOUD_ADMIN_USER=${NEXTCLOUD_ADMIN_USER}
       - NEXTCLOUD_ADMIN_PASSWORD=${NEXTCLOUD_ADMIN_PASSWORD}
-      # PostgreSQL settings
       - POSTGRES_HOST=db
       - POSTGRES_DB=${POSTGRES_DB:-nextcloud}
       - POSTGRES_USER=${POSTGRES_USER}
@@ -14,8 +19,8 @@ services:
       - TZ=${TZ}
     volumes:
       - app_data:/var/www/html
-      - ./php-fpm-logging.conf:/usr/local/etc/php-fpm.d/zz-logging.conf:ro,Z # disable php access logging, nginx already logs them
-      - ./php-fpm-pool.conf:/usr/local/etc/php-fpm.d/zzz-pool.conf:ro
+      - ./php-fpm-pool.conf:/usr/local/etc/php-fpm.d/zzz-pool.conf:ro,Z
+      - ./php-fpm-logging.conf:/usr/local/etc/php-fpm.d/zz-logging.conf:ro,Z # nginx уже логирует
     depends_on:
       db:
         condition: service_healthy
@@ -44,8 +49,22 @@ services:
     container_name: onlyoffice-document-server
     image: onlyoffice/documentserver:9.3
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost/healthcheck || exit 1"]
+      interval: 30s
+      retries: 3
+      start_period: 60s
+      timeout: 10s
     environment:
       - JWT_SECRET=${JWT_SECRET}
+      # Без этого external links между xlsx падают: request-filtering-agent в DS
+      # режет private IP. См. /app/ds/run-document-server.sh:433-436.
+      - ALLOW_PRIVATE_IP_ADDRESS=true
+      - TZ=${TZ}
+    extra_hosts:
+      # DS должен резолвить тот же hostname, через который user зашёл в NC, обратно
+      # на хост-машину - иначе callback на localhost:8080 падает в ECONNREFUSED.
+      - "${NEXTCLOUD_HOSTNAME}:host-gateway"
     volumes:
       - document_data:/var/www/onlyoffice/Data
       - document_log:/var/log/onlyoffice
@@ -54,6 +73,12 @@ services:
     container_name: nginx-server
     image: nginx:stable-alpine
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost || exit 1"]
+      interval: 30s
+      retries: 3
+      start_period: 60s
+      timeout: 10s
     environment:
       - TZ=${TZ}
     ports:
@@ -73,7 +98,7 @@ services:
     volumes:
       - app_data:/var/www/html
     environment:
-      - NEXTCLOUD_URL=${NEXTCLOUD_URL}
+      - NEXTCLOUD_HOST=${NEXTCLOUD_HOSTNAME}
       - NEXTCLOUD_TRUSTED_PROXIES=${NEXTCLOUD_TRUSTED_PROXIES}
       - JWT_SECRET=${JWT_SECRET}
       - TZ=${TZ}
@@ -86,27 +111,27 @@ services:
 
         php /var/www/html/occ app:install onlyoffice || php /var/www/html/occ app:enable onlyoffice;
 
-        php /var/www/html/occ config:app:set onlyoffice DocumentServerUrl --value='/ds-vpath/';
-        php /var/www/html/occ config:app:set onlyoffice DocumentServerInternalUrl --value='http://onlyoffice-document-server/';
-        php /var/www/html/occ config:app:set onlyoffice StorageUrl --value='http://nginx-server/';
-        php /var/www/html/occ config:app:set onlyoffice jwt_secret --value='${JWT_SECRET}';
+        php /var/www/html/occ config:app:set onlyoffice DocumentServerUrl --value="/ds-vpath/";
+        php /var/www/html/occ config:app:set onlyoffice DocumentServerInternalUrl --value="http://onlyoffice-document-server/";
+        php /var/www/html/occ config:app:set onlyoffice StorageUrl --value="http://nginx-server/";
+        php /var/www/html/occ config:app:set onlyoffice jwt_secret --value="$${JWT_SECRET}";
         php /var/www/html/occ config:app:set onlyoffice customizationForcesave --value=true
 
-        php /var/www/html/occ config:system:set trusted_proxies 0 --value='nginx-server' --type=string;
-        php /var/www/html/occ config:system:set trusted_domains 0 --value='nginx-server' --type=string;
-        php /var/www/html/occ config:system:set trusted_domains 1 --value='${NEXTCLOUD_HOST}:${NEXTCLOUD_PORT}' --type=string;
-        php /var/www/html/occ config:system:set trusted_domains 2 --value='${NEXTCLOUD_HOST}' --type=string;
-        php /var/www/html/occ config:system:set trusted_domains 3 --value='localhost' --type=string;
-        php /var/www/html/occ config:system:set trusted_domains 4 --value='localhost:${NEXTCLOUD_PORT}' --type=string;
-        php /var/www/html/occ config:system:set trusted_domains 5 --value='127.0.0.1' --type=string;
-        php /var/www/html/occ config:system:set trusted_domains 6 --value='127.0.0.1:${NEXTCLOUD_PORT}' --type=string;
+        # callback URL для server-side (DS external links) идёт через docker-network
+        # hostname. overwriteprotocol/overwritehost НЕ ставим - петля на /login.
+        php /var/www/html/occ config:system:set overwrite.cli.url --value="http://nginx-server" --type=string;
 
-        php /var/www/html/occ config:system:set memcache.local --value='\OC\Memcache\APCu' --type=string;
-        php /var/www/html/occ config:system:set appstoreenabled --value=false --type=boolean;
-        php /var/www/html/occ config:system:set has_internet_connection --value=false --type=boolean;
+        php /var/www/html/occ config:system:set trusted_proxies --value="$${NEXTCLOUD_TRUSTED_PROXIES}" --type=json;
+        php /var/www/html/occ config:system:set trusted_domains 0 --value="nginx-server" --type=string;
+        php /var/www/html/occ config:system:set trusted_domains 1 --value="$${NEXTCLOUD_HOST}" --type=string;
+
+        php /var/www/html/occ config:system:set memcache.local --value="\\OC\\Memcache\\APCu" --type=string;
         php /var/www/html/occ background:cron;
 
         php /var/www/html/occ app:install forms || php /var/www/html/occ app:enable forms;
+
+        php /var/www/html/occ config:system:set appstoreenabled --value=false --type=boolean;
+        php /var/www/html/occ config:system:set has_internet_connection --value=false --type=boolean;
 
         php /var/www/html/occ maintenance:repair --include-expensive;
         php /var/www/html/occ db:add-missing-indices;
@@ -116,9 +141,13 @@ services:
     restart: "no"
 
   cron-worker:
-    image: nextcloud:33.0-fpm
+    build:
+      context: .
+      dockerfile: cron-worker.Dockerfile
+    image: nextcloud-cron-worker:33.0
     container_name: nextcloud-cron-worker
     restart: always
+    user: "www-data"
     depends_on:
       app:
         condition: service_started
@@ -131,16 +160,20 @@ services:
       - ./cron-worker.sh:/usr/local/bin/cron-worker.sh:ro,Z
     environment:
       - TZ=${TZ}
-    entrypoint: >
-      sh -c "
-        echo 'installing (jq, sudo)...';
-        apt-get update -qq && apt-get install -y -qq jq sudo > /dev/null;
-        echo 'script start...';
-        exec sudo -u www-data bash /usr/local/bin/cron-worker.sh
-      "
+    entrypoint: ["bash", "/usr/local/bin/cron-worker.sh"]
 
 volumes:
   db_data:
   document_data:
   document_log:
   app_data:
+
+networks:
+  default:
+    # Фиксируем подсеть, чтобы trusted_proxies в .env матчился именно с нашим
+    # bridge'ом, а не с любой другой docker network на машине.
+    # Если порт уже занят другим compose-проектом, поменять
+    # здесь и в NEXTCLOUD_TRUSTED_PROXIES в .env согласованно.
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16

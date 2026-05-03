@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# Настройки интервалов
 CRON_INTERVAL=300   # 5 минут
 SYNC_INTERVAL=10    # 10 секунд
 NEXTCLOUD_PATH="/var/www/html"
@@ -15,10 +14,8 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
 }
 
-# Функция для выполнения php с нужными параметрами, чтобы не было лишних ворнингов
 php_occ() {
-    # -d memory_limit=512M убирает ошибку "Failed to set memory limit"
-    php -d memory_limit=512M "$NEXTCLOUD_PATH/occ" "$@"
+    php -d memory_limit=2G "$NEXTCLOUD_PATH/occ" "$@"
 }
 
 log "Waiting for Nextcloud installation..."
@@ -31,7 +28,7 @@ log "Cron started (Sync: ${SYNC_INTERVAL}s, Cron: ${CRON_INTERVAL}s)"
 while true; do
     LOOP_START=$(date +%s)
 
-    # 1. ПРИОРИТЕТ: Синхронизация форм
+    # Синхронизация форм
     # Получаем вывод и очищаем его: оставляем только то, что начинается с '[' (начало JSON массива)
     RAW_OUTPUT=$(php_occ background-job:list --output=json 2>/dev/null)
     CLEAN_JSON=$(echo "$RAW_OUTPUT" | sed -n '/^\[/,$p')
@@ -61,19 +58,19 @@ while true; do
         fi
     fi
 
-    # 2. ТАЙМЕР: Стандартный cron.php
+    # Стандартный cron.php
     CURRENT_TIME=$(date +%s)
     if [ $((CURRENT_TIME - LAST_CRON_RUN)) -ge "$CRON_INTERVAL" ]; then
         CRON_START=$(date +%s)
 
-        php -d memory_limit=512M -f "$NEXTCLOUD_PATH/cron.php" > /dev/null 2>&1
+        php -d memory_limit=2G -f "$NEXTCLOUD_PATH/cron.php" > /dev/null 2>&1
 
         LAST_CRON_RUN=$(date +%s)
         DURATION=$((LAST_CRON_RUN - CRON_START))
         log "CRON: System tasks completed (${DURATION}s)"
     fi
 
-    # 3. КОРРЕКЦИЯ ТАЙМЕРА
+    # Коррекция таймера
     LOOP_END=$(date +%s)
     SLEEP_TIME=$((SYNC_INTERVAL - (LOOP_END - LOOP_START)))
 

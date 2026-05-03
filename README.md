@@ -14,12 +14,12 @@
 
 Добавьте запись в файл `/etc/hosts` (требуется один раз):
 ```
-127.0.0.1   nextcloud.local
+127.0.0.1   nextcloud.localhost
 ```
 
 На Linux/macOS это можно сделать командой:
 ```bash
-echo "127.0.0.1   nextcloud.local" | sudo tee -a /etc/hosts
+echo "127.0.0.1   nextcloud.localhost" | sudo tee -a /etc/hosts
 ```
 
 ---
@@ -49,7 +49,7 @@ cd table
 ```
 
 4. После запуска Nextcloud (с подключённым OnlyOffice) доступен по адресу:
-   **http://nextcloud.local:8080**
+   **http://nextcloud.localhost:8080**
 
    При необходимости порт можно изменить через переменную `NEXTCLOUD_PORT` в файле `deploy/.env`.
 
@@ -75,12 +75,6 @@ docker compose down
 ```
 ---
 
-## Интеграция Nextcloud Forms → Windmill → Таблицы 
-
-Инструкция по настройке OAuth-подключения, созданию workflow для отправки форм и проверке интеграции - на вики странице [Интеграция Windmill
-](https://github.com/moevm/mse1h2026-table/wiki/Интеграция-Windmill).
-
----
 ## Работа с пользователями Nextcloud через manage.py
 Все команды выполняются из папки `table/`:
 ```bash
