@@ -158,54 +158,55 @@ cd table
   python manage.py upload --dir <path/to/dir> --dest /папка
 ```
 
-### Мониторинг и статус
+#### Мониторинг ресурсов
 
-Коллектор метрик позволяет собирать показатели нагрузки системы: CPU, RAM, диск, время отклика HTTP, число сессий.
+Сбор метрик нагрузки: CPU/RAM по контейнерам, время отклика API, число активных пользовательских сессий Nextcloud, свободное место.
 
-#### Разовый замер метрик
-Вывести метрики в консоль:
+Разовый замер:
 ```bash
 python manage.py monitor resources
 ```
 
-#### Вывод в формате JSON
+В формате JSON:
 ```bash
 python manage.py --output json monitor resources
 ```
 
-#### Проверить время отклика любого сервиса
-Можно указать URL и путь:
+Указать другой endpoint для замера времени отклика (по умолчанию `/status.php`):
 ```bash
-python manage.py --output json monitor resources --url http://localhost:8080 --path /status.php
+python manage.py monitor resources --path /index.php/login
 ```
 
-#### Периодический сбор метрик
-Собирать метрики каждые 5 секунд, выводить в консоль:
+Периодический сбор (например каждые 5 секунд, 12 раз):
+```bash
+python manage.py --output json monitor resources --interval 5 --count 12
+```
+
+Бесконечный сбор (Ctrl-C для остановки):
 ```bash
 python manage.py --output json monitor resources --interval 5 --count 0
 ```
 
-#### Сохранять метрики в отдельные JSON-файлы
-Каждый замер будет сохраняться в отдельный JSON-файл в указанной папке:
+Сохранять каждый снепшот в отдельный JSON-файл:
 ```bash
-python manage.py --output json monitor resources --output-dir ./metrics
+python manage.py monitor resources --interval 5 --count 12 --output-dir ./metrics
 ```
 
-#### Сохранять метрики в файлы, без вывода в консоль
-Если не хотите видеть метрики в терминале, используйте `--quiet`:
+Тихий режим (без вывода в консоль, только в файлы):
 ```bash
-python manage.py --output json monitor resources --output-dir ./metrics --quiet
+python manage.py monitor resources --interval 5 --count 0 --output-dir ./metrics --quiet
 ```
 
-#### Описание всех флагов и параметров
+Все флаги:
 
-- `--output json` - выводить метрики в формате JSON (по умолчанию текст)
-- `--interval 5` - делать замер каждые 5 секунд
-- `--count 0` - делать замеры бесконечно (или укажите число, чтобы ограничить количество)
-- `--output-dir ./metrics` - сохранять каждый замер в отдельный файл в указанной папке
-- `--quiet` - не выводить ничего в консоль, только писать в файлы
-- `--url` и `--path` - задать адрес сервиса для проверки времени отклика (по умолчанию http://localhost:8080/)
-- `--disk-path` - указать, какой раздел диска мониторить (по умолчанию текущий)
-- `--cpu-sample-interval` - время усреднения для CPU (секунды, по умолчанию 0.2)
+| Флаг | По умолчанию | Описание |
+|---|---|---|
+| `--samples N` | 5 | сколько HTTP-запросов делать для усреднения времени отклика |
+| `--path PATH` | `/status.php` | endpoint для замера latency |
+| `--response-timeout S` | 30 | таймаут одного HTTP-запроса в секундах |
+| `--interval N` | 0 | секунд между снепшотами (0 = одноразовый замер) |
+| `--count M` | 1 | сколько снепшотов сделать (0 = бесконечно) |
+| `--output-dir DIR` | — | каждый снепшот пишется в `DIR/metrics_<timestamp>.json` |
+| `--quiet` | false | подавить вывод в stdout (используется с `--output-dir`) |
 
-**Важно:** флаги (`--output`, `--config`) всегда пишутся до команды (`monitor resources`).
+**Важно:** глобальный флаг `--output text|json` пишется **до** subcommand'а: `python manage.py --output json monitor resources ...`
