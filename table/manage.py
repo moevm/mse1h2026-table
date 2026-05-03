@@ -1,12 +1,10 @@
 import argparse
-import datetime
 import os
 import yaml
 
 from scripts.deploy import deploy_up, deploy_down, deploy_demo, deploy_status
 from scripts.upload_xlsx import upload_batch
-from scripts.utils import success, error, now
-from scripts.monitor import monitor_resources
+from scripts.utils import success, error
 from scripts.users import (
     users_create,
     users_delete,
@@ -14,6 +12,9 @@ from scripts.users import (
     users_csv_delete,
     users_list,
 )
+from scripts.backup import backup_create, backup_list
+from scripts.restore import backup_restore
+from scripts.monitor import monitor_resources
 
 
 def add_nextcloud_args(parser):
@@ -42,49 +43,6 @@ def load_config(args):
         error("Invalid YAML file")
 
     return data
-
-
-# BACKUP
-
-def backup_create(args):
-    # backup create
-    backup_id = f"backup-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
-    print("[STUB] Creating backup")
-    success({
-        "backup_id": backup_id,
-        "status": "created",
-        "timestamp": now()
-    }, args.output)
-
-
-def backup_list(args):
-    # backup list
-    success({
-        "backups": [
-            {"id": "backup-20260220010101", "size": "120MB"},
-            {"id": "backup-20260221010101", "size": "130MB"}
-        ]
-    }, args.output)
-
-
-def backup_restore(args):
-    # backup restore [backup_id]
-    print(f"[STUB] Restoring backup {args.backup_id}")
-    success({
-        "backup_id": args.backup_id,
-        "status": "restored"
-    }, args.output)
-
-
-# MONITOR
-
-def monitor_status(args):
-    # monitor status
-    success({
-        "overall": "OK",
-        "tables": {"status": "ok", "response_ms": 210},
-        "forms": {"status": "ok", "response_ms": 150}
-    }, args.output)
 
 
 # LOADTEST
@@ -237,58 +195,65 @@ def main():
     backup = subparsers.add_parser("backup")
     backup_sub = backup.add_subparsers(dest="action", required=True)
 
-    backup_sub.add_parser("create").set_defaults(func=backup_create)
+    backup_create_parser = backup_sub.add_parser("create")
+    backup_create_parser.add_argument(
+        "--components", nargs="+", default=["all"],
+        choices=["all", "core", "data"],
+        help="Components to backup (default: all)"
+    )
+    backup_create_parser.add_argument("--name", help="Optional backup name")
+    backup_create_parser.set_defaults(func=backup_create)
+
     backup_sub.add_parser("list").set_defaults(func=backup_list)
 
     restore = backup_sub.add_parser("restore")
     restore.add_argument("backup_id")
+    restore.add_argument(
+        "--components", nargs="+", default=["all"],
+        choices=["all", "core", "data"],
+        help="Components to restore (default: all available in archive)"
+    )
+    restore.add_argument(
+        "--force", action="store_true",
+        help="Skip interactive confirmation (destructive)"
+    )
     restore.set_defaults(func=backup_restore)
 
     # MONITOR
     monitor = subparsers.add_parser("monitor")
     monitor_sub = monitor.add_subparsers(dest="action", required=True)
 
-    monitor_sub.add_parser("status").set_defaults(func=monitor_status)
-
     resources = monitor_sub.add_parser("resources")
     resources.add_argument(
-        "--url", default="http://localhost:8080",
-        help="Base URL for response time check"
+        "--samples", type=int, default=5,
+        help="Number of API latency samples (default: 5)"
     )
     resources.add_argument(
-        "--path", default="/",
-        help="Path to request for response time check"
+        "--path", default="/status.php",
+        help="Endpoint path for response time check (default: /status.php)"
     )
     resources.add_argument(
         "--response-timeout", dest="response_timeout",
-        type=float, default=10.0,
-        help="Response time timeout in seconds"
+        type=float, default=30.0,
+        help="HTTP request timeout in seconds (default: 30)"
     )
     resources.add_argument(
         "--interval", type=float, default=0.0,
-        help="Interval in seconds, 0 for one-shot"
+        help="Seconds between snapshots (0 = one-shot, default: 0)"
     )
     resources.add_argument(
         "--count", type=int, default=1,
-        help="Number of samples, 0 for infinite"
-    )
-    resources.add_argument(
-        "--disk-path", dest="disk_path", default=".",
-        help="Path to check disk free space"
-    )
-    resources.add_argument(
-        "--cpu-sample-interval", dest="cpu_sample_interval",
-        type=float, default=0.2,
-        help="CPU sample interval in seconds"
+        help="Number of snapshots; 0 = unlimited (default: 1)"
     )
     resources.add_argument(
         "--output-dir", dest="output_dir", default=None,
-        help="Directory to write JSON metrics files"
+        help="Directory to write per-snapshot JSON files"
     )
     resources.add_argument(
         "--quiet", action="store_true",
-        help="Disable stdout output"
+        help="Suppress stdout (use with --output-dir)"
     )
+    add_nextcloud_args(resources)
     resources.set_defaults(func=monitor_resources)
 
     # LOADTEST
