@@ -14,6 +14,7 @@ from scripts.users import (
 )
 from scripts.backup import backup_create, backup_list
 from scripts.restore import backup_restore
+from scripts.monitor import monitor_resources
 
 
 def add_nextcloud_args(parser):
@@ -42,26 +43,6 @@ def load_config(args):
         error("Invalid YAML file")
 
     return data
-
-
-# MONITOR
-
-def monitor_status(args):
-    # monitor status
-    success({
-        "overall": "OK",
-        "tables": {"status": "ok", "response_ms": 210},
-        "forms": {"status": "ok", "response_ms": 150}
-    }, args.output)
-
-
-def monitor_resources(args):
-    # monitor resources
-    success({
-        "cpu_percent": 32,
-        "memory_mb": 1024,
-        "disk_free_gb": 120
-    }, args.output)
 
 
 # LOADTEST
@@ -242,8 +223,38 @@ def main():
     monitor = subparsers.add_parser("monitor")
     monitor_sub = monitor.add_subparsers(dest="action", required=True)
 
-    monitor_sub.add_parser("status").set_defaults(func=monitor_status)
-    monitor_sub.add_parser("resources").set_defaults(func=monitor_resources)
+    resources = monitor_sub.add_parser("resources")
+    resources.add_argument(
+        "--samples", type=int, default=5,
+        help="Number of API latency samples (default: 5)"
+    )
+    resources.add_argument(
+        "--path", default="/status.php",
+        help="Endpoint path for response time check (default: /status.php)"
+    )
+    resources.add_argument(
+        "--response-timeout", dest="response_timeout",
+        type=float, default=30.0,
+        help="HTTP request timeout in seconds (default: 30)"
+    )
+    resources.add_argument(
+        "--interval", type=float, default=0.0,
+        help="Seconds between snapshots (0 = one-shot, default: 0)"
+    )
+    resources.add_argument(
+        "--count", type=int, default=1,
+        help="Number of snapshots; 0 = unlimited (default: 1)"
+    )
+    resources.add_argument(
+        "--output-dir", dest="output_dir", default=None,
+        help="Directory to write per-snapshot JSON files"
+    )
+    resources.add_argument(
+        "--quiet", action="store_true",
+        help="Suppress stdout (use with --output-dir)"
+    )
+    add_nextcloud_args(resources)
+    resources.set_defaults(func=monitor_resources)
 
     # LOADTEST
     loadtest = subparsers.add_parser("loadtest")
