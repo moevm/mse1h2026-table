@@ -23,16 +23,7 @@ from scripts.deploy import get_compose_dir, get_compose_file
 from scripts.utils import error, now, success
 
 
-def _phase(label):
-    """Однострочная отметка прогресса в stderr — чтобы пользователь
-    видел, что restore продвигается, не нагружая stdout (там в финале
-    лежит JSON/text payload)."""
-    print(f"  → {label}", file=sys.stderr)
-
-
 def _confirm_destructive(prompt):
-    """Интерактивное подтверждение. На отказ или Ctrl-D - корректно
-    выходим с rc=0 (это не ошибка, а отмена пользователем)."""
     print(prompt, file=sys.stderr)
     try:
         answer = input("Продолжить? [y/N]: ").strip().lower()
@@ -44,8 +35,6 @@ def _confirm_destructive(prompt):
 
 
 def _check_containers_up(compose_dir, compose_file, services=("app", "db")):
-    """Pre-flight для restore: убеждаемся, что нужные контейнеры запущены.
-    Иначе docker compose exec упадёт где-то посреди destructive операций."""
     cmd = _compose_base(compose_file) + [
         "ps", "--format", "json", "--all",
     ]
@@ -81,10 +70,6 @@ def _check_containers_up(compose_dir, compose_file, services=("app", "db")):
 
 
 def _occ_run_safe(compose_dir, compose_file, label, *occ_args):
-    """Выполнить occ с capture; не падать при ошибке, но логировать.
-    Используется для пост-restore реконсиляции (files:scan/cleanup,
-    maintenance:repair, db:add-missing-indices) - там частичная неудача
-    не должна обнулять весь restore."""
     proc = _occ(compose_dir, compose_file, *occ_args, capture=True)
     if proc.returncode != 0:
         out = (proc.stderr or proc.stdout or "").strip()
@@ -94,9 +79,6 @@ def _occ_run_safe(compose_dir, compose_file, label, *occ_args):
 
 
 def _resync_onlyoffice_jwt(compose_dir, compose_file, current_jwt):
-    """После restore в БД может лежать старый JWT_SECRET. Контейнер OnlyOffice
-    при этом работает с текущим (из .env). Перевыставляем в БД, чтобы
-    редактирование документов не сломалось."""
     proc = _occ(
         compose_dir, compose_file,
         "config:app:set", "onlyoffice", "jwt_secret",
@@ -109,10 +91,6 @@ def _resync_onlyoffice_jwt(compose_dir, compose_file, current_jwt):
 
 
 def _patch_config_db_creds(compose_dir, compose_file):
-    """Переписать в config.php (внутри контейнера) актуальные значения
-    dbname/dbuser/dbpassword/dbhost из текущего deploy/.env. Это нужно
-    после восстановления core: бэкап содержит config.php от момента создания,
-    а актуальный пароль БД может уже отличаться - иначе occ не подключится."""
     env_path = compose_dir / ".env"
     values = _parse_env_file(env_path)
 
@@ -127,7 +105,7 @@ def _patch_config_db_creds(compose_dir, compose_file):
         if not value:
             continue
 
-        # Сначала через occ - наиболее предсказуемый путь.
+        # Сначала через occ
         proc = _occ(
             compose_dir, compose_file,
             "config:system:set", key, "--value", value,
@@ -136,9 +114,6 @@ def _patch_config_db_creds(compose_dir, compose_file):
         if proc.returncode == 0:
             continue
 
-        # occ не подключается к БД (типичный кейс - старый пароль
-        # в восстановленном config.php). Падаем на sed внутри контейнера.
-        # Используем '|' как разделитель, чтобы '/'-в-значениях не ломали.
         sed_expr = f"s|'{key}' => '.*'|'{key}' => '{value}'|g"
         sed_cmd = _compose_base(compose_file) + [
             "exec", "-T", "app",
@@ -157,9 +132,6 @@ def _patch_config_db_creds(compose_dir, compose_file):
 
 
 def _pg_terminate_connections(compose_dir, compose_file, service):
-    """Best-effort: отстреливаем чужие соединения к текущей БД, чтобы
-    DROP SCHEMA не упёрся в зависимости. Не делаем check=True -
-    в свежем контейнере pg_stat_activity может быть пустым."""
     sql = (
         "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
         "WHERE datname = current_database() "
@@ -191,18 +163,14 @@ def _drop_and_recreate_schema(compose_dir, compose_file, service):
 
 
 def _psql_load_dump(compose_dir, compose_file, service, dump_path):
-    """Загружаем SQL-дамп через psql. --single-transaction даёт
-    «всё или ничего»: при любой ошибке БД откатится в дропнутую схему.
-    -q подавляет per-command вывод psql (SET / CREATE TABLE / ...)."""
     cmd = _compose_base(compose_file) + [
         "exec", "-T", service, "sh", "-c",
         'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" '
-        '--single-transaction -q -v ON_ERROR_STOP=1',
+        '--single-transaction -v ON_ERROR_STOP=1',
     ]
     with open(dump_path, "rb") as f:
         proc = subprocess.run(
-            cmd, cwd=compose_dir, stdin=f,
-            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+            cmd, cwd=compose_dir, stdin=f, stderr=subprocess.PIPE
         )
     if proc.returncode != 0:
         err = (proc.stderr or b"").decode("utf-8", errors="replace").strip()
@@ -213,15 +181,13 @@ def _psql_load_dump(compose_dir, compose_file, service, dump_path):
 
 def _extract_into_container(compose_dir, compose_file, service,
                             target_dir, tar_path, label):
-    """Стримим tar-файл с хоста в контейнер и распаковываем там."""
     cmd = _compose_base(compose_file) + [
         "exec", "-T", service,
         "tar", "xf", "-", "-C", target_dir,
     ]
     with open(tar_path, "rb") as f:
         proc = subprocess.run(
-            cmd, cwd=compose_dir, stdin=f,
-            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+            cmd, cwd=compose_dir, stdin=f, stderr=subprocess.PIPE
         )
     if proc.returncode != 0:
         err = (proc.stderr or b"").decode("utf-8", errors="replace").strip()
@@ -229,8 +195,6 @@ def _extract_into_container(compose_dir, compose_file, service,
 
 
 def _remove_inside_container(compose_dir, compose_file, service, path):
-    """rm -rf внутри контейнера. Параноидальная защита: путь обязан
-    начинаться с /var/www/html/ - иначе отказ."""
     if not path.startswith("/var/www/html/"):
         raise RuntimeError(
             f"Отказ удалять путь вне /var/www/html/: {path}"
@@ -248,9 +212,6 @@ def _remove_inside_container(compose_dir, compose_file, service, path):
 
 
 def _extract_archive(archive_path, target_dir):
-    """Распаковка наружного .tar.gz во временную директорию.
-    На Python 3.12+ используем filter='data', чтобы tarfile не позволял
-    экзотические члены архива (хотя архив мы создаём сами)."""
     extract_kwargs = {}
     if sys.version_info >= (3, 12):
         extract_kwargs["filter"] = "data"
@@ -259,9 +220,6 @@ def _extract_archive(archive_path, target_dir):
 
 
 def _resolve_restore_components(requested, manifest_components):
-    """Какие компоненты реально восстанавливать.
-    'all' = всё что лежит в манифесте. Иначе - пересечение с манифестом
-    (если запросили то, чего нет в архиве, fail)."""
     archive = list(manifest_components or [])
     requested = list(requested)
     if "all" in requested:
@@ -276,8 +234,6 @@ def _resolve_restore_components(requested, manifest_components):
 
 
 def _staged_path(staged_dir, manifest, kind, default_name):
-    """Найти в распакованном архиве файл нужного 'kind' (по манифесту).
-    Имя берём из manifest.files[].name, не хардкодим."""
     for entry in manifest.get("files", []):
         if entry.get("kind") == kind:
             path = staged_dir / entry["name"]
@@ -409,7 +365,6 @@ def backup_restore(args):
     try:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_dir = Path(tmp)
-            _phase("Распаковываю архив")
             _extract_archive(archive_path, tmp_dir)
             staged_dir = tmp_dir / backup_id
             if not staged_dir.is_dir():
@@ -417,11 +372,9 @@ def backup_restore(args):
                 staged_dir = tmp_dir
 
             if needs_maintenance:
-                _phase("Включаю maintenance mode")
                 _maintenance_set(compose_dir, compose_file, True)
                 maintenance_on = True
 
-            # ====== CORE ======
             if "core" in components:
                 core_tar = _staged_path(
                     staged_dir, manifest,
@@ -451,7 +404,6 @@ def backup_restore(args):
                         "В архиве не найден core-tar (config + themes)"
                     )
 
-                _phase("Восстанавливаю core (config + themes + db)")
                 # 1. Wipe config/themes.
                 _remove_inside_container(
                     compose_dir, compose_file, "app",
@@ -483,17 +435,14 @@ def backup_restore(args):
                     env_values = _parse_env_file(compose_dir / ".env")
                     current_jwt = env_values.get("JWT_SECRET", "")
                     if current_jwt:
-                        _phase("Синхронизирую JWT_SECRET с текущим .env")
                         _resync_onlyoffice_jwt(
                             compose_dir, compose_file, current_jwt
                         )
                         env_resynced.append("JWT_SECRET")
 
                 if "POSTGRES_PASSWORD" in env_mismatches:
-                    # Уже учтено в patch_config, просто фиксируем в выводе.
                     env_resynced.append("POSTGRES_PASSWORD")
 
-            # ====== DATA ======
             if "data" in components:
                 data_tar = None
                 for entry in manifest.get("files", []):
@@ -506,7 +455,6 @@ def backup_restore(args):
                         "В архиве не найден data-tar"
                     )
 
-                _phase("Восстанавливаю файлы пользователей")
                 _remove_inside_container(
                     compose_dir, compose_file, "app",
                     "/var/www/html/data",
@@ -516,25 +464,20 @@ def backup_restore(args):
                     "/var/www/html", data_tar, "tar xf (data)",
                 )
 
-            # ====== Реконсиляция при селективном restore ======
             if "core" in components and "data" not in components:
-                _phase("Чищу битые ссылки в БД (files:cleanup)")
                 _occ_run_safe(
                     compose_dir, compose_file,
                     "files:cleanup", "files:cleanup", "--all",
                 )
                 reconciliation = "files:cleanup"
             elif "data" in components and "core" not in components:
-                _phase("Сканирую новые файлы (files:scan)")
                 _occ_run_safe(
                     compose_dir, compose_file,
                     "files:scan", "files:scan", "--all",
                 )
                 reconciliation = "files:scan"
 
-            # ====== Финальная починка БД/индексов ======
             if "core" in components:
-                _phase("maintenance:repair + db:add-missing-indices")
                 _occ_run_safe(
                     compose_dir, compose_file,
                     "maintenance:repair", "maintenance:repair",
@@ -546,7 +489,6 @@ def backup_restore(args):
 
             # Снимаем maintenance.
             if maintenance_on:
-                _phase("Выключаю maintenance mode")
                 if _try_maintenance_off(compose_dir, compose_file):
                     maintenance_on = False
 

@@ -2,6 +2,7 @@ import csv
 import subprocess
 from pathlib import Path
 import json
+import os
 import time
 import requests
 
@@ -206,6 +207,9 @@ def deploy_status(args):
         error(f"Не найден docker-compose.yml: {compose_file}")
 
     base_url = get_nextcloud_url(args)
+    windmill_host = os.environ.get("NEXTCLOUD_HOST", "localhost")
+    windmill_port = os.environ.get("WINDMILL_PORT", "8000")
+    windmill_url = f"http://{windmill_host}:{windmill_port}"
 
     client = NextcloudClient(
         base_url,
@@ -409,7 +413,7 @@ def deploy_status(args):
 
         required_container_names = [
             "app", "db", "onlyoffice-document-server", "nginx",
-            "cron-worker"
+            "windmill-db", "windmill", "windmill-worker"
         ]
         optional_container_names = ["nextcloud-init"]
         all_container_names = (
@@ -445,6 +449,11 @@ def deploy_status(args):
         db_status = check_db()
         nextcloud_status = check_nextcloud()
         nginx_status = check_http_service("nginx", base_url, ["/"])
+        windmill_status = check_http_service(
+            "windmill",
+            windmill_url,
+            ["/api/version", "/"]
+        )
 
         required_containers_status = overall_status({
             name: {"status": containers[name]["status"]}
@@ -463,6 +472,7 @@ def deploy_status(args):
             "db": db_status,
             "nextcloud": nextcloud_status,
             "nginx": nginx_status,
+            "windmill": windmill_status,
         }
 
         overall = overall_status({
@@ -470,6 +480,7 @@ def deploy_status(args):
             "db": {"status": db_status["status"]},
             "nextcloud": {"status": nextcloud_status["status"]},
             "nginx": {"status": nginx_status["status"]},
+            "windmill": {"status": windmill_status["status"]},
         })
 
         return {
@@ -477,6 +488,7 @@ def deploy_status(args):
             "compose_dir": str(compose_dir),
             "compose_file": str(compose_file),
             "nextcloud_url": base_url,
+            "windmill_url": windmill_url,
             "components": components,
             "timestamp": now(),
         }

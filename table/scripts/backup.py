@@ -168,8 +168,9 @@ def _stream_to_file(cmd, cwd, output_path, label):
 
 
 def _pg_dump(compose_dir, compose_file, service, output_path, label):
-    # Внутри postgres-контейнера пользователь и имя БД лежат
-    # в стандартных переменных POSTGRES_USER / POSTGRES_DB.
+    # Внутри обоих postgres-контейнеров пользователь и имя БД лежат
+    # в стандартных переменных POSTGRES_USER / POSTGRES_DB
+    # (compose маппит наши WINDMILL_DB_* в POSTGRES_*).
     cmd = _compose_base(compose_file) + [
         "exec", "-T", service, "sh", "-c",
         'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"',
