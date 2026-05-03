@@ -1,10 +1,9 @@
 import argparse
 import os
 import yaml
-from pathlib import Path
 
 from scripts.deploy import deploy_up, deploy_down, deploy_demo, deploy_status
-from scripts.export_manager import ExportManager, ExportConfigurationError
+from scripts.import_adapter import import_run
 from scripts.upload_xlsx import upload_batch
 from scripts.utils import success, error
 from scripts.users import (
@@ -33,24 +32,16 @@ def add_nextcloud_args(parser):
 
 def load_config(args):
     # --config [path]
-    if args.config:
-        cfg_path = Path(args.config)
-    else:
-        cfg_path = Path(__file__).with_name("config.yaml")
-
-    if not cfg_path.is_absolute():
-        cfg_path = (Path.cwd() / cfg_path).resolve()
-
-    if not cfg_path.exists():
+    cfg_path = args.config
+    if not os.path.exists(cfg_path):
         error(f"File not found at path {cfg_path}")
-
     try:
         with open(cfg_path, "r", encoding="utf-8") as f:
-            data = yaml.safe_load(f) or {}
+            data = yaml.safe_load(f)
     except yaml.YAMLError:
         error("Invalid YAML file")
 
-    return data, str(cfg_path.parent)
+    return data
 
 
 # BACKUP
@@ -94,66 +85,6 @@ def loadtest_run(args):
         "avg_response_ms": 320,
         "errors": 0
     }, args.output)
-
-
-# EXPORT
-
-def _parse_kv_pairs(items):
-    result = {}
-    for item in items or []:
-        if "=" not in item:
-            error(f"Invalid --set value '{item}'. Expected KEY=VALUE")
-        key, value = item.split("=", 1)
-        key = key.strip()
-        if not key:
-            error(f"Invalid --set value '{item}'. Key is empty")
-        result[key] = value
-    return result
-
-
-def export_run(args):
-    manager = ExportManager(
-        args.project_dir,
-        getattr(args, "config_data", None),
-        config_base_dir=getattr(args, "config_dir", None),
-    )
-
-    try:
-        extra_context = _parse_kv_pairs(getattr(args, "set", []))
-        if getattr(args, "mode", None):
-            extra_context["mode"] = args.mode
-        if getattr(args, "no_xlsx", False):
-            extra_context["build_xlsx"] = False
-
-        artifact = manager.run(args.source, **extra_context)
-    except ExportConfigurationError as exc:
-        error(str(exc))
-
-    if not artifact.xlsx_path:
-        error(f"Источник '{args.source}' не создал xlsx-файл")
-
-    upload_config = {
-        "url": args.url,
-        "user": args.username,
-        "pass": args.password,
-    }
-
-    try:
-        upload_result = upload_batch(
-            config=upload_config,
-            file_path=artifact.xlsx_path,
-            dir_path=None,
-            dest=args.dest,
-            custom_name=args.name,
-            overwrite=args.overwrite,
-        )
-    except ValueError as e:
-        error(str(e))
-
-    if isinstance(upload_result, dict) and "error" in upload_result:
-        error(upload_result["error"])
-
-    success(upload_result, args.output)
 
 
 # UPLOAD
@@ -312,35 +243,51 @@ def main():
     run.add_argument("--users", type=int, required=True)
     run.set_defaults(func=loadtest_run)
 
-    # EXPORT
-    export = subparsers.add_parser("export")
-    export.add_argument(
-        "source",
-        help="Source name (for example: gitlogger, lms_stepik, lms_moodle, or any future module)"
+    # IMPORT - generic CSV -> Nextcloud xlsx upsert
+    imp = subparsers.add_parser(
+        "import",
+        help="Import CSV data into a Nextcloud xlsx (upsert by key)"
     )
-    export.add_argument(
-        "--mode",
-        default=None,
-        help="Source mode (for example: commits, issues, pull_requests, wikis...)"
+    imp.add_argument(
+        "--csv", required=True, help="Path to source CSV file"
     )
-    export.add_argument(
-        "--set",
-        action="append",
-        default=[],
-        metavar="KEY=VALUE",
-        help="Extra context variables for templating in config. Can be repeated."
+    imp.add_argument(
+        "--target", required=True,
+        help="Target xlsx path in Nextcloud "
+             "(e.g. /Учебные_таблицы/Группа.xlsx)"
     )
-    export.add_argument(
-        "--no-xlsx",
+    imp.add_argument(
+        "--key", action="append", default=[],
+        help="Column name used to match rows. "
+             "Repeat the flag for a composite key "
+             "(e.g. --key 'repository name' --key number)."
+    )
+    imp.add_argument(
+        "--sheet", default=None,
+        help="Target sheet name within xlsx (default: first sheet)"
+    )
+    imp.add_argument(
+        "--separator", default=",",
+        help="CSV field separator (default: ','; use ';' for "
+             "pandas/Moodle exports)"
+    )
+    imp.add_argument(
+        "--encoding", default="utf-8",
+        help="CSV file encoding (default: utf-8)"
+    )
+    imp.add_argument(
+        "--skip-columns", dest="skip_columns", type=int, default=0,
+        help="Number of leading CSV columns to drop "
+             "(e.g. 1 to skip pandas index column from Moodle exporter)"
+    )
+    imp.add_argument(
+        "--create-if-missing", dest="create_if_missing",
         action="store_true",
-        help="Disable automatic XLSX generation from CSV"
+        help="Create target xlsx (and parent directories) if it does not "
+             "exist; without this flag, missing target is an error"
     )
-
-    add_nextcloud_args(export)
-    export.add_argument("--dest", default="/", help="Destination folder in Nextcloud")
-    export.add_argument("--name", help="Custom file name in Nextcloud")
-    export.add_argument("--overwrite", action="store_true", default=False)
-    export.set_defaults(func=export_run)
+    add_nextcloud_args(imp)
+    imp.set_defaults(func=import_run)
 
     # UPLOAD
     upload = subparsers.add_parser("upload", help="Upload .xlsx tables")
@@ -356,9 +303,8 @@ def main():
     args = parser.parse_args()
 
     if args.config:
-        config_data, config_dir = load_config(args)
+        config_data = load_config(args)
         args.config_data = config_data
-        args.config_dir = config_dir
         print("Configuration loaded")
     else:
         args.config_data = None
