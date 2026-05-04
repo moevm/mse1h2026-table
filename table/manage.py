@@ -3,6 +3,7 @@ import os
 import yaml
 
 from scripts.deploy import deploy_up, deploy_down, deploy_demo, deploy_status
+from scripts.import_adapter import import_run
 from scripts.upload_xlsx import upload_batch
 from scripts.utils import success, error
 from scripts.users import (
@@ -54,18 +55,6 @@ def loadtest_run(args):
         "simulated_users": args.users,
         "avg_response_ms": 320,
         "errors": 0
-    }, args.output)
-
-
-# EXPORT
-
-def export_run(args):
-    # export [module]
-    print(f"[STUB] Running export module: {args.module}")
-    success({
-        "module": args.module,
-        "status": "completed",
-        "rows_exported": 120
     }, args.output)
 
 
@@ -264,10 +253,51 @@ def main():
     run.add_argument("--users", type=int, required=True)
     run.set_defaults(func=loadtest_run)
 
-    # EXPORT
-    export = subparsers.add_parser("export")
-    export.add_argument("module", choices=["gitlogger", "lms"])
-    export.set_defaults(func=export_run)
+    # IMPORT - generic CSV -> Nextcloud xlsx upsert
+    imp = subparsers.add_parser(
+        "import",
+        help="Import CSV data into a Nextcloud xlsx (upsert by key)"
+    )
+    imp.add_argument(
+        "--csv", required=True, help="Path to source CSV file"
+    )
+    imp.add_argument(
+        "--target", required=True,
+        help="Target xlsx path in Nextcloud "
+             "(e.g. /Учебные_таблицы/Группа.xlsx)"
+    )
+    imp.add_argument(
+        "--key", action="append", default=[],
+        help="Column name used to match rows. "
+             "Repeat the flag for a composite key "
+             "(e.g. --key 'repository name' --key number)."
+    )
+    imp.add_argument(
+        "--sheet", default=None,
+        help="Target sheet name within xlsx (default: first sheet)"
+    )
+    imp.add_argument(
+        "--separator", default=",",
+        help="CSV field separator (default: ','; use ';' for "
+             "pandas/Moodle exports)"
+    )
+    imp.add_argument(
+        "--encoding", default="utf-8",
+        help="CSV file encoding (default: utf-8)"
+    )
+    imp.add_argument(
+        "--skip-columns", dest="skip_columns", type=int, default=0,
+        help="Number of leading CSV columns to drop "
+             "(e.g. 1 to skip pandas index column from Moodle exporter)"
+    )
+    imp.add_argument(
+        "--create-if-missing", dest="create_if_missing",
+        action="store_true",
+        help="Create target xlsx (and parent directories) if it does not "
+             "exist; without this flag, missing target is an error"
+    )
+    add_nextcloud_args(imp)
+    imp.set_defaults(func=import_run)
 
     # UPLOAD
     upload = subparsers.add_parser("upload", help="Upload .xlsx tables")
