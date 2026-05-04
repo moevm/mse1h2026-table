@@ -152,20 +152,58 @@ cd table
   python manage.py upload --dir <path/to/dir> --dest /папка
 ```
 
-### Мониторинг и статус
+#### Мониторинг ресурсов
 
-- Проверить статус всех компонентов системы:
+Сбор метрик нагрузки: CPU/RAM по контейнерам, время отклика API, число активных пользовательских сессий Nextcloud, свободное место.
+
+Разовый замер:
 ```bash
-  python manage.py deploy status
+python manage.py monitor resources
 ```
-- Ждать полной готовности системы:
+
+В формате JSON:
 ```bash
-  python manage.py deploy status --wait
+python manage.py --output json monitor resources
 ```
-- Посмотреть метрики ресурсов (CPU, RAM, диск):
+
+Указать другой endpoint для замера времени отклика (по умолчанию `/status.php`):
 ```bash
-  python manage.py monitor resources
+python manage.py monitor resources --path /index.php/login
 ```
+
+Периодический сбор (например каждые 5 секунд, 12 раз):
+```bash
+python manage.py --output json monitor resources --interval 5 --count 12
+```
+
+Бесконечный сбор (Ctrl-C для остановки):
+```bash
+python manage.py --output json monitor resources --interval 5 --count 0
+```
+
+Сохранять каждый снепшот в отдельный JSON-файл:
+```bash
+python manage.py monitor resources --interval 5 --count 12 --output-dir ./metrics
+```
+
+Тихий режим (без вывода в консоль, только в файлы):
+```bash
+python manage.py monitor resources --interval 5 --count 0 --output-dir ./metrics --quiet
+```
+
+Все флаги:
+
+| Флаг | По умолчанию | Описание |
+|---|---|---|
+| `--samples N` | 5 | сколько HTTP-запросов делать для усреднения времени отклика |
+| `--path PATH` | `/status.php` | endpoint для замера latency |
+| `--response-timeout S` | 30 | таймаут одного HTTP-запроса в секундах |
+| `--interval N` | 0 | секунд между снепшотами (0 = одноразовый замер) |
+| `--count M` | 1 | сколько снепшотов сделать (0 = бесконечно) |
+| `--output-dir DIR` | — | каждый снепшот пишется в `DIR/metrics_<timestamp>.json` |
+| `--quiet` | false | подавить вывод в stdout (используется с `--output-dir`) |
+
+**Важно:** глобальный флаг `--output text|json` пишется **до** subcommand'а: `python manage.py --output json monitor resources ...`
 
 ### Импорт CSV в таблицу (адаптер)
 
