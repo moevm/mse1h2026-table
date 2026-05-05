@@ -162,6 +162,37 @@ services:
       - TZ=${TZ}
     entrypoint: ["bash", "/usr/local/bin/cron-worker.sh"]
 
+  # Контейнеризованный manage.py CLI. Не стартует с обычным `up` (profiles: tools).
+  # Запуск: ./bin/table-cli <args> - wrapper экспортирует REPO_ROOT и зовёт
+  # `docker compose --profile tools run --rm cli <args>`.
+  #
+  # Ключевые особенности:
+  # - mount /var/run/docker.sock - для backup/restore/monitor, которые делают
+  #   `docker compose exec` (maintenance:mode, pg_dump, tar, docker stats и т.д.).
+  # - bind-mount репо по тому же абсолютному пути ${REPO_ROOT} - чтобы из cli
+  #   можно было звать `docker compose -f $REPO_ROOT/deploy/docker-compose.yml ...`
+  #   и относительные mount'ы (./nginx.conf, ./php-fpm-pool.conf) резолвились в
+  #   пути, существующие на хосте (демон бежит на хосте, не в cli).
+  # - NEXTCLOUD_URL по умолчанию указывает на nginx-server (DNS compose-сети);
+  #   host-Python путь не затрагивается, у него default `http://localhost:8080`.
+  cli:
+    build:
+      context: ../table
+      dockerfile: Dockerfile
+    image: mse1h2026-table-cli:latest
+    profiles: ["tools"]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${REPO_ROOT:?REPO_ROOT must be set; use ./bin/table-cli wrapper}:${REPO_ROOT}
+    working_dir: ${REPO_ROOT}/table
+    environment:
+      - NEXTCLOUD_URL=${CLI_NEXTCLOUD_URL:-http://nginx-server}
+      - NEXTCLOUD_ADMIN_USER=${NEXTCLOUD_ADMIN_USER}
+      - NEXTCLOUD_ADMIN_PASSWORD=${NEXTCLOUD_ADMIN_PASSWORD}
+      - PYTHONUNBUFFERED=1
+      - REPO_ROOT=${REPO_ROOT}
+      - TZ=${TZ}
+
 volumes:
   db_data:
   document_data:

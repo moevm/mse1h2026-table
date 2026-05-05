@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Контейнеризованный launcher для manage.py - не требует Python на хосте.
+# Все subcommands manage.py доступны как `./bin/table-cli <args...>`.
+#
+# REPO_ROOT экспортируется так, чтобы внутри cli-контейнера репо лежал по
+# тому же абсолютному пути, что и на хосте. Это нужно для docker-in-docker
+# через mount /var/run/docker.sock: когда cli делает `docker compose up -d`,
+# относительные bind-mount'ы в docker-compose.yml (./php-fpm-pool.conf и др.)
+# резолвятся в абсолютные пути относительно compose-файла - и эти пути должны
+# существовать на хосте, потому что демон бежит на хосте, а не внутри cli.
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+export REPO_ROOT
+
+cd "$REPO_ROOT"
+exec docker compose -f deploy/docker-compose.yml --profile tools run --rm cli "$@"

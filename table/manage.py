@@ -20,15 +20,23 @@ from scripts.monitor import monitor_resources
 
 def add_nextcloud_args(parser):
     parser.add_argument(
-        "--url", default="http://localhost:8080", help="Nextcloud URL"
+        "--url",
+        default=os.environ.get("NEXTCLOUD_URL", "http://localhost:8080"),
+        help="Nextcloud URL"
     )
 
     parser.add_argument(
-        "--username", default="admin", help="Admin username"
+        "--username",
+        default=os.environ.get("NEXTCLOUD_ADMIN_USER", "admin"),
+        help="Admin username"
     )
 
     parser.add_argument(
-        "--password", default="super_secure_password", help="Admin password"
+        "--password",
+        default=os.environ.get(
+            "NEXTCLOUD_ADMIN_PASSWORD", "super_secure_password"
+        ),
+        help="Admin password"
     )
 
 
