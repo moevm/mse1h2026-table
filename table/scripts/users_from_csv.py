@@ -388,19 +388,3 @@ def delete_users_from_csv(csv_path, api_base_url, admin_user, admin_pass):
             return {"error": f"Critical script error: {e}"}
 
     return report
-
-
-# Функция для тестирования вне CLI
-if __name__ == "__main__":
-    # print(create_users_from_csv(
-    #     "D:/Prog/Labs/OPRPO/mse1h2026-table/table/scripts/users_example.csv",
-    #     "http://localhost",
-    #     "admin",
-    #     "super_secure_password")
-    #     )
-    print(delete_users_from_csv(
-        "D:/Prog/Labs/OPRPO/mse1h2026-table/table/scripts/users_example.csv",
-        "http://localhost",
-        "admin",
-        "super_secure_password")
-    )

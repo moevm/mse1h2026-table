@@ -1,12 +1,10 @@
-import os
 import glob
-import logging
-import requests
+import os
+import sys
 from urllib.parse import quote
 
-# Настройка логирования: выводит сообщения в реальном времени в консоль
-logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
-logger = logging.getLogger(__name__)
+import requests
+
 
 REQUEST_TIMEOUT = 30
 
@@ -33,11 +31,17 @@ def _ensure_cloud_directory(session, base_url, dest_path):
                                timeout=REQUEST_TIMEOUT)
 
         if resp.status_code == 404:
-            logger.info(f"Путь {current_path} отсутствует. Создание...")
+            print(
+                f"Путь {current_path} отсутствует. Создание...",
+                file=sys.stderr,
+            )
             mkcol_resp = session.request("MKCOL", full_url,
                                          timeout=REQUEST_TIMEOUT)
             if mkcol_resp.status_code != 201:
-                logger.error(f"Не удалось создать директорию {current_path}")
+                print(
+                    f"Не удалось создать директорию {current_path}",
+                    file=sys.stderr,
+                )
                 return False
     return True
 
@@ -82,12 +86,16 @@ def upload_xlsx(session, file_path, dest_folder, config,
     # Статус 207 (Multi-Status) в WebDAV говорит о том, что файл существует
     if check.status_code == 207:
         if not overwrite:
-            logger.info(
-                f"Пропуск: {file_name} уже существует (overwrite=False)")
+            print(
+                f"Пропуск: {file_name} уже существует (overwrite=False)",
+                file=sys.stderr,
+            )
             return {"file": file_name, "status": "skipped",
                     "reason": "Already exists"}
-        logger.warning(
-            f"Файл {file_name} существует. Будет выполнена перезапись.")
+        print(
+            f"Файл {file_name} существует. Будет выполнена перезапись.",
+            file=sys.stderr,
+        )
 
     # ЭТАП 3: Загрузка тела файла
     try:
@@ -148,21 +156,3 @@ def upload_batch(config, file_path=None, dir_path=None,
             results.append(res)
 
     return results
-
-
-if __name__ == "__main__":
-    # Тестовые данные для проверки модуля
-    test_config = {
-        "url": "http://localhost",
-        "user": "admin",
-        "pass": "super_secure_password"
-    }
-    # Путь к примеру в текущей директории скрипта
-    example = os.path.join(os.path.dirname(__file__), "example_upload.xlsx")
-
-    if os.path.exists(example):
-        print(upload_batch(
-            test_config, file_path=example, dest="/Test/", overwrite=False
-        ))
-    else:
-        print(f"Для теста создайте файл {example}")

@@ -16,11 +16,10 @@ from scripts.backup import (
     _parse_env_file,
     _read_manifest_from_archive,
     _try_maintenance_off,
-    _warn,
     get_backup_dir,
 )
 from scripts.deploy import get_compose_dir, get_compose_file
-from scripts.utils import error, now, success
+from scripts.utils import error, now, success, warn
 
 
 def _confirm_destructive(prompt):
@@ -73,7 +72,7 @@ def _occ_run_safe(compose_dir, compose_file, label, *occ_args):
     proc = _occ(compose_dir, compose_file, *occ_args, capture=True)
     if proc.returncode != 0:
         out = (proc.stderr or proc.stdout or "").strip()
-        _warn(f"{label} (rc={proc.returncode}): {out[:300]}")
+        warn(f"{label} (rc={proc.returncode}): {out[:300]}")
         return False
     return True
 
@@ -105,29 +104,15 @@ def _patch_config_db_creds(compose_dir, compose_file):
         if not value:
             continue
 
-        # Сначала через occ
         proc = _occ(
             compose_dir, compose_file,
             "config:system:set", key, "--value", value,
             capture=True,
         )
-        if proc.returncode == 0:
-            continue
-
-        sed_expr = f"s|'{key}' => '.*'|'{key}' => '{value}'|g"
-        sed_cmd = _compose_base(compose_file) + [
-            "exec", "-T", "app",
-            "sed", "-i", sed_expr,
-            "/var/www/html/config/config.php",
-        ]
-        sed_proc = subprocess.run(
-            sed_cmd, cwd=compose_dir, text=True, capture_output=True,
-            stdin=subprocess.DEVNULL,
-        )
-        if sed_proc.returncode != 0:
-            err = (sed_proc.stderr or sed_proc.stdout or "").strip()
+        if proc.returncode != 0:
+            err = (proc.stderr or proc.stdout or "").strip()
             raise RuntimeError(
-                f"Не удалось обновить {key} в config.php: {err}"
+                f"occ config:system:set {key} упал: {err}"
             )
 
 
@@ -359,7 +344,7 @@ def backup_restore(args):
 
     needs_maintenance = any(c in components for c in ("core", "data"))
     maintenance_on = False
-    reconciliation = None
+    reconciliation = []
     env_resynced = []
 
     try:
@@ -464,18 +449,25 @@ def backup_restore(args):
                     "/var/www/html", data_tar, "tar xf (data)",
                 )
 
-            if "core" in components and "data" not in components:
+            # files:scan/cleanup, maintenance:repair, db:add-missing-indices
+            # требуют выключенный maintenance. Иначе либо отказывают, либо
+            # не реконсилят и оставляют фантомные файлы в Некстклауде
+            if maintenance_on:
+                if _try_maintenance_off(compose_dir, compose_file):
+                    maintenance_on = False
+
+            if "core" in components:
                 _occ_run_safe(
                     compose_dir, compose_file,
                     "files:cleanup", "files:cleanup", "--all",
                 )
-                reconciliation = "files:cleanup"
-            elif "data" in components and "core" not in components:
+                reconciliation.append("files:cleanup")
+            if "data" in components:
                 _occ_run_safe(
                     compose_dir, compose_file,
                     "files:scan", "files:scan", "--all",
                 )
-                reconciliation = "files:scan"
+                reconciliation.append("files:scan")
 
             if "core" in components:
                 _occ_run_safe(
@@ -486,11 +478,6 @@ def backup_restore(args):
                     compose_dir, compose_file,
                     "db:add-missing-indices", "db:add-missing-indices",
                 )
-
-            # Снимаем maintenance.
-            if maintenance_on:
-                if _try_maintenance_off(compose_dir, compose_file):
-                    maintenance_on = False
 
     except Exception as e:
         if maintenance_on:

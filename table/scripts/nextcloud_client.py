@@ -4,6 +4,28 @@ import requests
 REQUEST_TIMEOUT = 30
 
 
+def _parse_ocs(resp):
+    """
+    Распарсить ответ OCS API: проверить HTTP, вытащить meta.statuscode.
+
+    Возвращает блок ocs.data при statuscode == 100.
+    Бросает Exception с сообщением OCS при остальных кодах
+    (включая 997 — auth fail).
+    """
+    resp.raise_for_status()
+    try:
+        ocs = resp.json()["ocs"]
+    except (ValueError, KeyError) as e:
+        raise Exception(f"Некорректный OCS-ответ: {e}")
+
+    meta = ocs.get("meta", {})
+    code = meta.get("statuscode")
+    if code != 100:
+        message = meta.get("message") or "<no message>"
+        raise Exception(f"{code}: {message}")
+    return ocs.get("data", {})
+
+
 class NextcloudClient:
     def __init__(self, base_url, username, password):
         self.base_url = base_url.rstrip("/")
@@ -17,16 +39,12 @@ class NextcloudClient:
     def get_users(self):
         url = f"{self.base_url}/ocs/v1.php/cloud/users"
         resp = self.session.get(url, timeout=REQUEST_TIMEOUT)
-        resp.raise_for_status()
-
-        return resp.json()["ocs"]["data"]["users"]
+        return _parse_ocs(resp).get("users", [])
 
     def get_user_details(self, username):
         url = f"{self.base_url}/ocs/v1.php/cloud/users/{username}"
         resp = self.session.get(url, timeout=REQUEST_TIMEOUT)
-
-        resp.raise_for_status()
-        data = resp.json()["ocs"]["data"]
+        data = _parse_ocs(resp)
 
         return {
             "username": data.get("id"),
@@ -54,17 +72,9 @@ class NextcloudClient:
             payload["groups[]"] = groups
 
         resp = self.session.post(url, data=payload, timeout=REQUEST_TIMEOUT)
-        resp.raise_for_status()
-
-        ocs = resp.json()["ocs"]["meta"]
-        if ocs["statuscode"] != 100:
-            raise Exception(f"{ocs['statuscode']}: {ocs['message']}")
+        _parse_ocs(resp)
 
     def delete_user(self, username):
         url = f"{self.base_url}/ocs/v1.php/cloud/users/{username}"
         resp = self.session.delete(url, timeout=REQUEST_TIMEOUT)
-        resp.raise_for_status()
-
-        ocs = resp.json()["ocs"]["meta"]
-        if ocs["statuscode"] != 100:
-            raise Exception(f"{ocs['statuscode']}: {ocs['message']}")
+        _parse_ocs(resp)

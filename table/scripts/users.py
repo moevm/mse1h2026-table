@@ -1,3 +1,5 @@
+import sys
+
 from scripts.users_from_csv import create_users_from_csv, delete_users_from_csv
 from scripts.utils import success, error, now
 from scripts.nextcloud_client import NextcloudClient
@@ -48,8 +50,8 @@ def users_delete(args):
 
 def users_csv_create(args):
     # users csv-create [csv_file] --flags
-    print(f"Starting csv user creation from: {args.csv_file}")
-    print(f"Target: {args.url} (User: {args.username})")
+    print(f"Starting csv user creation from: {args.csv_file}", file=sys.stderr)
+    print(f"Target: {args.url} (User: {args.username})", file=sys.stderr)
 
     result = create_users_from_csv(
         args.csv_file,
@@ -67,8 +69,11 @@ def users_csv_create(args):
 
 def users_csv_delete(args):
     # users csv-delete [csv_file] --flags
-    print(f"Starting csv user deletion based on: {args.csv_file}")
-    print(f"Target: {args.url} (User: {args.username})")
+    print(
+        f"Starting csv user deletion based on: {args.csv_file}",
+        file=sys.stderr,
+    )
+    print(f"Target: {args.url} (User: {args.username})", file=sys.stderr)
 
     result = delete_users_from_csv(
         args.csv_file,

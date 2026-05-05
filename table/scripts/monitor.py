@@ -12,7 +12,7 @@ from scripts.deploy import (
     get_compose_file,
     get_nextcloud_url,
 )
-from scripts.utils import success, error, now
+from scripts.utils import success, error, now, print_output
 
 
 _MEM_UNITS = {
@@ -207,12 +207,8 @@ def _write_payload(payload, output_dir):
 
 
 def _print_payload(payload, fmt):
-    if fmt == "json":
-        print(json.dumps(payload, ensure_ascii=False), flush=True)
-    else:
-        for k, v in payload.items():
-            print(f"{k}: {v}")
-        print("---", flush=True)
+    print_output(payload, fmt)
+    print("---", flush=True)
 
 
 def monitor_resources(args):

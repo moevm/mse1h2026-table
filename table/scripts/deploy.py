@@ -1,8 +1,10 @@
 import csv
-import subprocess
-from pathlib import Path
 import json
+import subprocess
+import sys
 import time
+from pathlib import Path
+
 import requests
 
 from scripts.nextcloud_client import NextcloudClient
@@ -36,8 +38,43 @@ def get_admin_password(args):
     return getattr(args, "password", "super_secure_password")
 
 
-def run_command(cmd, cwd=None):
+def get_public_nextcloud_url(compose_dir):
+    """URL Nextcloud для браузера, собранный из deploy/.env.
+
+    В отличие от get_nextcloud_url() (который возвращает URL для polling
+    из контейнера, например http://nginx-server), эта функция строит URL,
+    по которому пользователь заходит снаружи: http://<HOSTNAME>:<PORT>.
+    """
+    host = "nextcloud.localhost"
+    port = "8080"
+    env_path = compose_dir / ".env"
+    if env_path.exists():
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            line = line.split("#", 1)[0].strip()
+            if not line or "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            k, v = k.strip(), v.strip()
+            if k == "NEXTCLOUD_HOSTNAME" and v:
+                host = v
+            elif k == "NEXTCLOUD_PORT" and v:
+                port = v
+    return f"http://{host}:{port}"
+
+
+def run_command(cmd, cwd=None, stream=False):
     try:
+        if stream:
+            # Прогресс docker compose проксируем в stderr родителя:
+            # пользователь видит pull/start, stdout остаётся чистым под
+            # финальный JSON для --output json.
+            return subprocess.run(
+                cmd,
+                cwd=cwd,
+                check=True,
+                stdout=sys.stderr,
+                stderr=sys.stderr,
+            )
         return subprocess.run(
             cmd,
             cwd=cwd,
@@ -48,9 +85,9 @@ def run_command(cmd, cwd=None):
     except FileNotFoundError as e:
         error(str(e))
     except subprocess.CalledProcessError as e:
-        msg = e.stderr.strip() if e.stderr else e.stdout.strip()
-        if not msg:
-            msg = str(e)
+        stderr_text = (e.stderr or "").strip() if e.stderr else ""
+        stdout_text = (e.stdout or "").strip() if e.stdout else ""
+        msg = stderr_text or stdout_text or str(e)
         error(msg)
 
 
@@ -161,18 +198,17 @@ def deploy_up(args):
 
     run_command(
         ["docker", "compose", "-f", str(compose_file), "up", "-d"],
-        cwd=compose_dir
+        cwd=compose_dir,
+        stream=True,
     )
 
     success({
         "services": [
             "app", "db", "onlyoffice-document-server",
-            "nginx", "nextcloud-init"
+            "nginx", "nextcloud-init", "cron-worker",
         ],
         "status": "running",
         "timestamp": now(),
-        "env": args.env,
-        "project_dir": args.project_dir
     }, args.output)
 
 
@@ -186,7 +222,8 @@ def deploy_down(args):
 
     run_command(
         ["docker", "compose", "-f", str(compose_file), "down"],
-        cwd=compose_dir
+        cwd=compose_dir,
+        stream=True,
     )
 
     success({
@@ -472,9 +509,8 @@ def deploy_status(args):
 
         return {
             "overall": overall,
-            "compose_dir": str(compose_dir),
-            "compose_file": str(compose_file),
-            "nextcloud_url": base_url,
+            "nextcloud_url": get_public_nextcloud_url(compose_dir),
+            "polled_url": base_url,
             "components": components,
             "timestamp": now(),
         }
@@ -518,10 +554,10 @@ def deploy_demo(args):
     folder_name = "Учебные_таблицы"
 
     def print_section(title):
-        print(f"\n=== {title} ===")
+        print(f"\n=== {title} ===", file=sys.stderr)
 
     def print_kv(key, value):
-        print(f"{key}: {value}")
+        print(f"{key}: {value}", file=sys.stderr)
 
     print_section("DEPLOY DEMO")
     print_kv("nextcloud_url", base_url)
@@ -554,11 +590,12 @@ def deploy_demo(args):
     print_kv("groups_created", len(result_users.get("groups_created", [])))
 
     if result_users.get("failed"):
-        print("Failed users:")
+        print("Failed users:", file=sys.stderr)
         for item in result_users["failed"]:
             print(
                 f"- {item.get('user')}: code={item.get('code')}, "
-                f"reason={item.get('reason')}"
+                f"reason={item.get('reason')}",
+                file=sys.stderr,
             )
 
     debug_users = []
@@ -585,7 +622,8 @@ def deploy_demo(args):
         if u["created"]:
             print(
                 f"- {u['login']}: {u['role']} "
-                f"({permissions_text(u['permissions'])})"
+                f"({permissions_text(u['permissions'])})",
+                file=sys.stderr,
             )
 
     xlsx_files = sorted(scripts_dir.glob("*.xlsx"))
@@ -613,7 +651,7 @@ def deploy_demo(args):
             error(xlsx_upload["error"])
 
         tables.append({"source": str(xlsx_file), "result": xlsx_upload})
-        print(f"- uploaded: {xlsx_file.name}")
+        print(f"- uploaded: {xlsx_file.name}", file=sys.stderr)
 
     print_section("SHARES")
     share_results = []
@@ -636,13 +674,14 @@ def deploy_demo(args):
         })
 
         if share_result.get("status") == "shared":
-            print(f"- {group_name}: OK")
+            print(f"- {group_name}: OK", file=sys.stderr)
         else:
             print(
                 f"- {group_name}: FAIL "
                 f"(code={share_result.get('code')}, "
                 f"http_code={share_result.get('http_code')}, "
-                f"reason={share_result.get('reason')})"
+                f"reason={share_result.get('reason')})",
+                file=sys.stderr,
             )
 
     success({
