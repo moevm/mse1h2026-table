@@ -5,8 +5,9 @@
 Перед началом убедитесь, что установлены:
 
 - [Docker](https://docs.docker.com/get-started/get-docker/) и [Docker Compose](https://docs.docker.com/compose/install/)
-- Python 3.x
 - Git
+- Python 3.x — **только для host-Python режима**. Если запускаете CLI через
+  контейнер (`./bin/table-cli`, см. ниже), Python на хосте не нужен.
 
 ---
 
@@ -21,6 +22,50 @@
 ```bash
 echo "127.0.0.1   nextcloud.localhost" | sudo tee -a /etc/hosts
 ```
+
+---
+
+## Способы запуска CLI
+
+Есть два эквивалентных способа звать `manage.py` — выбирайте один:
+
+### Вариант A: контейнеризованный CLI (без Python на хосте)
+
+Из корня репозитория:
+```bash
+./bin/table-cli <subcommand> [args...]
+```
+
+Это запускает образ `mse1h2026-table-cli` (собирается автоматически при первом
+вызове) и проксирует аргументы в `manage.py` внутри контейнера. Нужен только
+Docker — Python и `pip install` на хосте не требуются.
+
+Все примеры ниже с `python manage.py …` имеют точный эквивалент `./bin/table-cli …`
+с теми же флагами. Например:
+
+```bash
+./bin/table-cli deploy up
+./bin/table-cli deploy demo
+./bin/table-cli users list --details
+./bin/table-cli backup create --components data --name nightly
+```
+
+**Важно:** контейнер cli монтирует `/var/run/docker.sock` — это нужно, чтобы
+`backup`/`restore`/`monitor`/`deploy *` могли управлять остальными сервисами
+стека (`docker compose exec` для `occ`, `pg_dump`, `docker stats` и т.д.). На машине.
+
+Файлы (CSV, xlsx, backup-архивы) передавайте путями относительно корня репо
+или абсолютными — wrapper монтирует репо по тому же пути, что на хосте.
+
+### Вариант B: host-Python (dev-режим)
+
+```bash
+cd table
+pip install -r requirements.txt
+python manage.py <subcommand> [args...]
+```
+
+Этот вариант оставлен для разработки и описан в примерах ниже.
 
 ---
 ## Установка и запуск

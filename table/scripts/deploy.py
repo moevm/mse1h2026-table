@@ -153,7 +153,6 @@ def share_folder(client, folder_name, share_type, share_with, permissions):
 
 def deploy_up(args):
     # deploy up
-    print("[STUB] docker compose up -d")
     compose_dir = get_compose_dir(args)
     compose_file = get_compose_file(args)
 
@@ -179,7 +178,6 @@ def deploy_up(args):
 
 def deploy_down(args):
     # deploy down
-    print("[STUB] docker compose down")
     compose_dir = get_compose_dir(args)
     compose_file = get_compose_file(args)
 
