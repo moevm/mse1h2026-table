@@ -4,13 +4,12 @@ import json
 import os
 import shutil
 import subprocess
-import sys
 import tarfile
 import tempfile
 from pathlib import Path
 
 from scripts.deploy import get_compose_dir, get_compose_file
-from scripts.utils import error, now, success
+from scripts.utils import error, now, success, warn
 
 
 MANIFEST_NAME = "manifest.json"
@@ -26,10 +25,6 @@ ENV_HASH_KEYS = (
     "POSTGRES_PASSWORD",
     "JWT_SECRET",
 )
-
-
-def _warn(msg):
-    print(f"WARNING: {msg}", file=sys.stderr)
 
 
 def get_backup_dir(args):
@@ -206,7 +201,7 @@ def _try_maintenance_off(compose_dir, compose_file):
         _maintenance_set(compose_dir, compose_file, False)
         return True
     except (RuntimeError, OSError) as e:
-        _warn(
+        warn(
             f"Не удалось выключить maintenance mode: {e}. "
             f"Выполните вручную: docker compose -f {compose_file} "
             f"exec app php /var/www/html/occ maintenance:mode --off"

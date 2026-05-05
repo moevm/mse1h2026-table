@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 import yaml
 
 from scripts.deploy import deploy_up, deploy_down, deploy_demo, deploy_status
@@ -98,6 +99,11 @@ def upload_run(args):
 # CLI Definition
 
 def main():
+    # Compose-сервис cli требует REPO_ROOT через ${REPO_ROOT:?...} даже если
+    # cli не стартует (он под profile).
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    os.environ.setdefault("REPO_ROOT", repo_root)
+
     parser = argparse.ArgumentParser()
 
     # Global flags
@@ -323,7 +329,7 @@ def main():
     if args.config:
         config_data = load_config(args)
         args.config_data = config_data
-        print("Configuration loaded")
+        print("Configuration loaded", file=sys.stderr)
     else:
         args.config_data = None
 

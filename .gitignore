@@ -1,5 +1,8 @@
 __pycache__/
 .vscode/
 venv/
+.venv/
 .flake8
 backups
+.DS_Store
+.idea/
