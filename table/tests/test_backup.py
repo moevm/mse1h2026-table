@@ -1,5 +1,7 @@
 import uuid
 import time
+from pathlib import Path
+import os
 
 
 def test_backup_and_restore_lifecycle(cli):
@@ -53,3 +55,8 @@ def test_backup_and_restore_lifecycle(cli):
         "Пользователь не был восстановлен из бэкапа! "
         "Проверьте, что в компонент 'all' входит дамп базы данных."
     )
+
+    project_root = Path(__file__).parent.parent
+    backup_file = project_root / "backups" / f"{backup_name}.tar.gz"
+    if backup_file.exists():
+        os.remove(backup_file)
