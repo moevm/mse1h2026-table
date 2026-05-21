@@ -8,11 +8,11 @@ import pytest
 TESTS_DIR = Path(__file__).parent
 FIXTURES_DIR = TESTS_DIR / "fixtures"
 MANAGE_PY = TESTS_DIR.parent / "manage.py"
- 
+
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_stack():
-    
+
     # deploy up
     up_cmd = [sys.executable, str(MANAGE_PY), "deploy", "up"]
     up_res = subprocess.run(up_cmd, capture_output=True, text=True)
@@ -21,7 +21,7 @@ def setup_stack():
 
     # Ожидание готовности
     status_cmd = [
-        sys.executable, str(MANAGE_PY), "deploy", "status", 
+        sys.executable, str(MANAGE_PY), "deploy", "status",
         "--wait", "--timeout", "300"
     ]
     status_res = subprocess.run(status_cmd, capture_output=True, text=True)
@@ -38,20 +38,21 @@ def setup_stack():
 @pytest.fixture
 def cli():
     """
-    Контракт хелпера: вызывает manage.py с --output json. 
+    Контракт хелпера: вызывает manage.py с --output json.
     Если exit != 0 — pytest.fail с stderr.
     """
     def _cli(*args) -> dict:
         cmd = [sys.executable, str(MANAGE_PY), "--output", "json"] + list(args)
         result = subprocess.run(cmd, capture_output=True, text=True)
-        
+
         if result.returncode != 0:
             pytest.fail(
-                f"Command '{' '.join(args)}' failed with exit code {result.returncode}.\n"
+                f"Command '{' '.join(args)}' failed "
+                f"with exit code {result.returncode}.\n"
                 f"STDERR: {result.stderr}\n"
                 f"STDOUT: {result.stdout}"
             )
-        
+
         try:
             return json.loads(result.stdout)
         except json.JSONDecodeError:
@@ -60,19 +61,19 @@ def cli():
                 f"STDOUT:\n{result.stdout}\n"
                 f"STDERR:\n{result.stderr}"
             )
-            
+
     return _cli
 
 
 @pytest.fixture(scope="session")
 def fixtures_dir():
     """
-    Возвращает путь к фикстурам и проверяет наличие 
+    Возвращает путь к фикстурам и проверяет наличие
     необходимых файлов.
     """
     if not FIXTURES_DIR.exists():
-        pytest.fail(f"Directory {FIXTURES_DIR} not found. Please create it manually.")
-        
+        pytest.fail(f"Directory {FIXTURES_DIR} not found.")
+
     required_files = ["sample.xlsx", "smoke_users.csv", "smoke_import.csv"]
     for file_name in required_files:
         file_path = FIXTURES_DIR / file_name
@@ -81,9 +82,10 @@ def fixtures_dir():
                 f"Fixture file '{file_name}' not found in {FIXTURES_DIR}. "
                 "Please create it manually before running tests."
             )
-            
+
     return FIXTURES_DIR
-    
+
+
 @pytest.fixture
 def cleanup_tasks():
     """
@@ -91,10 +93,10 @@ def cleanup_tasks():
     Тест добавляет в нее функции, которые нужно вызвать в конце.
     """
     tasks = []
-    
+
     yield tasks  # Отдаем список тесту
-    
-    # Этот код выполнится ПОСЛЕ завершения теста (успешного или нет)
+
+    # Этот код выполнится после завершения теста (успешного или нет)
     for task_func, args in reversed(tasks):
         try:
             task_func(*args)

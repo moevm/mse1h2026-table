@@ -4,15 +4,15 @@ def test_user_lifecycle(cli):
 	# Создание, поиск, удаление пользователя
     uid = uuid.uuid4().hex[:6]
     username = f"test_user_{uid}"
-    
+
     # Create
     create_res = cli(
-        "users", "create", username, 
-        "--display-name", f"Pytest {uid}", 
+        "users", "create", username,
+        "--display-name", f"Pytest {uid}",
         "--email", f"{username}@test.local"
     )
     assert create_res.get("status") == "created"	
-    
+
     # Проверка наличия пользователя
     list_res = cli("users", "list", "--filter", "username", "exact", username)
     assert isinstance(list_res, dict)
