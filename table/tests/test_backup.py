@@ -27,7 +27,6 @@ def test_backup_and_restore_lifecycle(cli):
     for item in items:
         if item.get("id") == backup_name:
             backup_id = item.get("id")
-    print(list_res)
     
     assert backup_id == backup_name
 
