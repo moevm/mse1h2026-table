@@ -40,7 +40,7 @@ echo "127.0.0.1   nextcloud.localhost" | sudo tee -a /etc/hosts
 Add-Content -Path "$env:windir\System32\drivers\etc\hosts" -Value "`n127.0.0.1`tnextcloud.localhost"
 ```
 
-Дефолтный URL стека после старта - **http://nextcloud.localhost:8080**. Порт меняется через `NEXTCLOUD_PORT` в `deploy/.env`, hostname - через `NEXTCLOUD_HOSTNAME` (с синхронной правкой hosts-файла).
+Дефолтный URL стека после старта для локального запуска - **http://nextcloud.localhost:8080**. Порт меняется через `NEXTCLOUD_PORT` в `deploy/.env`, hostname - через `NEXTCLOUD_HOSTNAME` (с синхронной правкой hosts-файла).
 
 ## Авторизация в Nextcloud
 
@@ -111,6 +111,21 @@ python3 manage.py deploy demo
 ```
 
 `deploy status` без `--wait` возвращает текущий снимок состояния - удобно для health-check скриптов / мониторинга.
+
+## HTTPS за внешним прокси
+
+TLS терминируется на внешнем reverse proxy, а сам compose-стек остаётся на HTTP.
+
+Что нужно задать в `deploy/.env`:
+- `NEXTCLOUD_HOSTNAME` - публичное DNS-имя
+- `NEXTCLOUD_TRUSTED_PROXIES` - IP или подсеть прокси
+
+Для локальной проверки HTTPS есть отдельный стенд `playground/caddy-tls-test/` с Caddy и self-signed сертификатом. Запуск:
+```bash
+./bin/table-cli deploy up
+docker compose -f playground/caddy-tls-test/docker-compose.yml up -d
+curl --noproxy '*' -k https://nextcloud.localhost:8443/status.php
+```
 
 ### `users` - управление пользователями Nextcloud
 
@@ -283,4 +298,3 @@ python3 manage.py monitor resources --interval 5 --count 0 --output-dir ./metric
 - Адаптер импорта (`manage.py import`) хранит значения как строки - числовые расчеты в формулах будут работать только после ручного -Текст по столбцам" в OnlyOffice.
 
 ---
-
