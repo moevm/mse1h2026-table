@@ -46,7 +46,9 @@ class UserSession(SequentialTaskSet):
                 if auth_header.startswith("Bearer "):
                     resp.success()
                 else:
-                    resp.failure("Create: Authorization header missing in echo")
+                    resp.failure(
+                        "Create: Authorization header missing in echo"
+                    )
             else:
                 resp.failure(f"Create HTTP {resp.status_code}")
 
