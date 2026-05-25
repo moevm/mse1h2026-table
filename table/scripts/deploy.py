@@ -33,26 +33,62 @@ def _first_non_empty(*values):
             return str(value).strip()
     return None
 
+def get_env_param(compose_dir, key):
+    env_path = compose_dir / ".env"
+
+    if not env_path.exists():
+        return None
+
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        line = line.split("#", 1)[0].strip()
+
+        if not line or "=" not in line:
+            continue
+
+        k, v = line.split("=", 1)
+        k = k.strip()
+        v = v.strip()
+
+        if k == key:
+            return v
+
+    return None
 
 def get_nextcloud_url(args):
+    compose_dir = get_compose_dir(args)
+
     return _first_non_empty(
         getattr(args, "url", None),
         os.environ.get("NEXTCLOUD_URL"),
         os.environ.get("CLI_NEXTCLOUD_URL"),
-    ) or error("Не задан Nextcloud URL: ожидается --url или NEXTCLOUD_URL / CLI_NEXTCLOUD_URL")
+        get_env_param(compose_dir, "CLI_NEXTCLOUD_URL"),
+        (
+            f"http://{get_env_param(compose_dir, 'NEXTCLOUD_HOSTNAME')}:"
+            f"{get_env_param(compose_dir, 'NEXTCLOUD_PORT')}"
+        ),
+    ) or error(
+        "Не задан Nextcloud URL: "
+        "ожидается --url, env или deploy/.env"
+    )
 
 
 def get_admin_user(args):
+    compose_dir = get_compose_dir(args)
+
     return _first_non_empty(
         getattr(args, "username", None),
         os.environ.get("NEXTCLOUD_ADMIN_USER"),
+        get_env_param(compose_dir, "NEXTCLOUD_ADMIN_USER"),
     ) or error("Не задан NEXTCLOUD_ADMIN_USER")
 
 
 def get_admin_password(args):
+    compose_dir = get_compose_dir(args)
+
     return _first_non_empty(
         getattr(args, "password", None),
         os.environ.get("NEXTCLOUD_ADMIN_PASSWORD"),
+        get_env_param(compose_dir, "NEXTCLOUD_ADMIN_PASSWORD"),
     ) or error("Не задан NEXTCLOUD_ADMIN_PASSWORD")
 
 
