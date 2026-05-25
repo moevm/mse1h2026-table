@@ -6,3 +6,4 @@ venv/
 backups
 .DS_Store
 .idea/
+results/
