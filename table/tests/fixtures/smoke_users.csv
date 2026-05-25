@@ -1,0 +1,6 @@
+login,password,email,display_name,groups,subadmin_groups,quota,manager
+teacher_head,SecurePass2025!,head@uni.local,Ivan Petrov,"teachers,staff",teachers,unlimited,
+teacher_math,MathPass2025!,math@uni.local,Elena Sidorova,teachers,,10 GB,teacher_head
+student_01,StudPass01!,st01@uni.local,Alex One,"students,class_a",,1 GB,teacher_math
+student_02,StudPass02!,st02@uni.local,Maria Two,"students,class_a",,1 GB,teacher_math
+student_03,StudPass03!,st03@uni.local,John Three,"students,class_a",,1 GB,teacher_math
