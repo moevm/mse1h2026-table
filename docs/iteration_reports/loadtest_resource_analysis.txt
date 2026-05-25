@@ -1,0 +1,32 @@
+Loadtest results: table/loadtest/results/2026-05-25T21-24-02
+Loadtest start (folder ts): 2026-05-25 21:24:02
+
+Snapshots: 145
+First snapshot: 2026-05-25 21:24:00.051628
+Last snapshot:  2026-05-25 21:42:17.922075
+
+Stage                  samples  app CPU%  app RAM MB  cron CPU%   OO CPU% total CPU%  total MB  API ms
+--------------------------------------------------------------------------------------------------------------
+baseline                     1       0.0       553.7        8.9       0.3        9.2    2120.3    13.0
+stage1 (50 users)            8      97.0       606.5        0.0       0.2      138.8    2183.1    70.1
+stage2 (100 users)          16      89.1       610.6        3.6       0.9      125.3    2186.8    23.2
+stage3 (200 users)          22     107.3       588.8       22.4       0.7      175.9    2196.3   170.6
+stage4 (300 users)          30     159.1       628.9        8.0       0.6      225.0    2225.2   162.0
+cooldown                    68       1.4       542.3        1.2       0.6        3.6    2127.1    11.9
+
+=== Derived model (averages over the stage) ===
+Baseline app-server RAM: 553.7 MB
+Stage4 (300 users) app-server RAM: 628.9 MB
+Delta RAM (avg): 75.2 MB for 300 users
+  -> 0.25 MB per simulated user (avg)
+Baseline app-server CPU: 0.0%
+Stage4 (300 users) app-server CPU: 159.1%
+Delta CPU (avg): 159.1%
+  -> 188.6 users per core (avg)
+
+=== Peak (max) over the whole loadtest window ===
+app-server peak CPU: 699.4%
+app-server peak RAM: 1980.4 MB
+All containers peak CPU: 812.1%
+All containers peak RAM: 3639.0 MB
+API latency peak: 3818.0 ms
