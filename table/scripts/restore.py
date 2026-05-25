@@ -155,7 +155,8 @@ def _psql_load_dump(compose_dir, compose_file, service, dump_path):
     ]
     with open(dump_path, "rb") as f:
         proc = subprocess.run(
-            cmd, cwd=compose_dir, stdin=f, stderr=subprocess.PIPE
+            cmd, cwd=compose_dir, stdin=f,
+            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE
         )
     if proc.returncode != 0:
         err = (proc.stderr or b"").decode("utf-8", errors="replace").strip()
@@ -459,7 +460,7 @@ def backup_restore(args):
             if "core" in components:
                 _occ_run_safe(
                     compose_dir, compose_file,
-                    "files:cleanup", "files:cleanup", "--all",
+                    "files:cleanup", "files:cleanup",
                 )
                 reconciliation.append("files:cleanup")
             if "data" in components:
