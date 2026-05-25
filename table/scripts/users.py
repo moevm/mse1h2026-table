@@ -1,5 +1,10 @@
 import sys
 
+from scripts.deploy import (
+    get_admin_password,
+    get_admin_user,
+    get_nextcloud_url,
+)
 from scripts.users_from_csv import create_users_from_csv, delete_users_from_csv
 from scripts.utils import success, error, now
 from scripts.nextcloud_client import NextcloudClient
@@ -10,7 +15,11 @@ from scripts.nextcloud_client import NextcloudClient
 def users_create(args):
     # users create [user]
 
-    client = NextcloudClient(args.url, args.username, args.password)
+    client = NextcloudClient(
+        get_nextcloud_url(args),
+        get_admin_user(args),
+        get_admin_password(args),
+    )
 
     try:
         client.create_user(
@@ -34,7 +43,11 @@ def users_create(args):
 def users_delete(args):
     # users delete [user]
 
-    client = NextcloudClient(args.url, args.username, args.password)
+    client = NextcloudClient(
+        get_nextcloud_url(args),
+        get_admin_user(args),
+        get_admin_password(args),
+    )
 
     try:
         client.delete_user(args.user)
@@ -50,14 +63,16 @@ def users_delete(args):
 
 def users_csv_create(args):
     # users csv-create [csv_file] --flags
+    url = get_nextcloud_url(args)
+    user = get_admin_user(args)
     print(f"Starting csv user creation from: {args.csv_file}", file=sys.stderr)
-    print(f"Target: {args.url} (User: {args.username})", file=sys.stderr)
+    print(f"Target: {url} (User: {user})", file=sys.stderr)
 
     result = create_users_from_csv(
         args.csv_file,
-        args.url,
-        args.username,
-        args.password
+        url,
+        user,
+        get_admin_password(args),
     )
 
     # Если в результате есть ошибки уровня скрипта (не API), выводим их
@@ -69,17 +84,19 @@ def users_csv_create(args):
 
 def users_csv_delete(args):
     # users csv-delete [csv_file] --flags
+    url = get_nextcloud_url(args)
+    user = get_admin_user(args)
     print(
         f"Starting csv user deletion based on: {args.csv_file}",
         file=sys.stderr,
     )
-    print(f"Target: {args.url} (User: {args.username})", file=sys.stderr)
+    print(f"Target: {url} (User: {user})", file=sys.stderr)
 
     result = delete_users_from_csv(
         args.csv_file,
-        args.url,
-        args.username,
-        args.password
+        url,
+        user,
+        get_admin_password(args),
     )
 
     if "error" in result:
@@ -89,7 +106,11 @@ def users_csv_delete(args):
 
 
 def users_list(args):
-    client = NextcloudClient(args.url, args.username, args.password)
+    client = NextcloudClient(
+        get_nextcloud_url(args),
+        get_admin_user(args),
+        get_admin_password(args),
+    )
 
     try:
         users = client.get_users()

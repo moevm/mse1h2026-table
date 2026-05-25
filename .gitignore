@@ -7,3 +7,4 @@ backups
 .DS_Store
 .idea/
 results/
+deploy/certs/

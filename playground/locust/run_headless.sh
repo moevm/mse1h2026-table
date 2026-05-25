@@ -1,14 +1,15 @@
 set -euo pipefail
 
-HOST="${1:-http://localhost:8080}"
+HOST="${1:-http://localhost:8088}"
 RESULTS_DIR="results"
 mkdir -p "$RESULTS_DIR"
 
-echo " Locust headless runner"
+echo "httpbin demo runner (issue #88)"
 echo " Target host : $HOST"
 echo " Results dir : $RESULTS_DIR"
+echo ""
 
-echo "[1/3] single_request 50 пользователей"
+echo "[1/2] single_request — 50 users"
 locust \
   -f scenarios/single_request.py \
   --host "$HOST" \
@@ -19,9 +20,9 @@ locust \
   --csv "$RESULTS_DIR/single" \
   --html "$RESULTS_DIR/single_report.html" \
   --exit-code-on-error 0
-echo "Готово → $RESULTS_DIR/single_*.csv, single_report.html"
+echo "-> $RESULTS_DIR/single_*.csv, single_report.html"
 
-echo "[2/3] chain 30 пользователей"
+echo "[2/2] chain — 30 users"
 locust \
   -f scenarios/chain.py \
   --host "$HOST" \
@@ -32,17 +33,7 @@ locust \
   --csv "$RESULTS_DIR/chain" \
   --html "$RESULTS_DIR/chain_report.html" \
   --exit-code-on-error 0
-echo "Готово → $RESULTS_DIR/chain_*.csv, chain_report.html"
+echo "-> $RESULTS_DIR/chain_*.csv, chain_report.html"
 
-echo "[3/3] stepped_load профиль 50→100→200→300"
-locust \
-  -f scenarios/stepped_load.py \
-  --host "$HOST" \
-  --headless \
-  --csv "$RESULTS_DIR/stepped" \
-  --html "$RESULTS_DIR/stepped_report.html" \
-  --exit-code-on-error 0
-echo "Готово → $RESULTS_DIR/stepped_*.csv, stepped_report.html"
-
-echo "Артефакты:"
+echo ""
 ls -lh "$RESULTS_DIR"

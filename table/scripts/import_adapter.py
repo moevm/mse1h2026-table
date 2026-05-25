@@ -6,6 +6,11 @@ from urllib.parse import quote
 import requests
 from openpyxl import Workbook, load_workbook
 
+from scripts.deploy import (
+    get_admin_password,
+    get_admin_user,
+    get_nextcloud_url,
+)
 from scripts.utils import success, error
 
 REQUEST_TIMEOUT = 60
@@ -184,9 +189,13 @@ def import_run(args):
             continue
         valid_rows.append((key, row))
 
+    url = get_nextcloud_url(args)
+    admin_user = get_admin_user(args)
+    admin_password = get_admin_password(args)
+
     with requests.Session() as session:
-        session.auth = (args.username, args.password)
-        dav_url = _build_dav_url(args.url, args.username, args.target)
+        session.auth = (admin_user, admin_password)
+        dav_url = _build_dav_url(url, admin_user, args.target)
 
         get_resp = session.get(dav_url, timeout=REQUEST_TIMEOUT)
         created = False
@@ -197,7 +206,7 @@ def import_run(args):
                     "Pass --create-if-missing to create it."
                 )
             _ensure_parent_dir(
-                session, args.url, args.username, args.target
+                session, url, admin_user, args.target
             )
             content = _create_empty_xlsx_bytes(args.sheet)
             created = True

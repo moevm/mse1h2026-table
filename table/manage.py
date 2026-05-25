@@ -17,6 +17,7 @@ from scripts.users import (
 from scripts.backup import backup_create, backup_list
 from scripts.restore import backup_restore
 from scripts.monitor import monitor_resources
+from scripts.loadtest import loadtest_run
 
 
 def add_nextcloud_args(parser):
@@ -53,28 +54,21 @@ def load_config(args):
     return data
 
 
-# LOADTEST
-
-def loadtest_run(args):
-    # loadtest run --users N
-    print("[STUB] Running load test simulation")
-    success({
-        "simulated_users": args.users,
-        "avg_response_ms": 320,
-        "errors": 0
-    }, args.output)
-
-
 # UPLOAD
 
 def upload_run(args):
     """
     Запуск процесса загрузки таблиц.
     """
+    from scripts.deploy import (
+        get_admin_password,
+        get_admin_user,
+        get_nextcloud_url,
+    )
     config = {
-        "url": args.url,
-        "user": args.username,
-        "pass": args.password
+        "url": get_nextcloud_url(args),
+        "user": get_admin_user(args),
+        "pass": get_admin_password(args),
     }
     try:
         results = upload_batch(
@@ -258,11 +252,49 @@ def main():
     resources.set_defaults(func=monitor_resources)
 
     # LOADTEST
-    loadtest = subparsers.add_parser("loadtest")
+    loadtest = subparsers.add_parser(
+        "loadtest", help="Run Locust load tests against the deployed stack"
+    )
     loadtest_sub = loadtest.add_subparsers(dest="action", required=True)
 
     run = loadtest_sub.add_parser("run")
-    run.add_argument("--users", type=int, required=True)
+    run.add_argument(
+        "--scenario", default="stepped",
+        help="Scenario name (default: stepped). See table/loadtest/README.md"
+    )
+    run.add_argument(
+        "--host", default=None,
+        help="Target Nextcloud URL (default: read from deploy/.env)"
+    )
+    run.add_argument(
+        "--users", type=int, default=None,
+        help="Override max concurrent users (ignored by shape-based scenarios)"
+    )
+    run.add_argument(
+        "--spawn-rate", dest="spawn_rate", type=float, default=None,
+        help="Override spawn rate"
+    )
+    run.add_argument(
+        "--run-time", dest="run_time", default=None,
+        help="Override total run time (e.g. '60s', '5m')"
+    )
+    run.add_argument(
+        "--results-dir", dest="results_dir", default=None,
+        help="Override results directory "
+             "(default: table/loadtest/results/<timestamp>/)"
+    )
+    run.add_argument(
+        "--password", default=None,
+        help="Override test users' password (default: from scenario env)"
+    )
+    run.add_argument(
+        "--user-prefix", dest="user_prefix", default=None,
+        help="Override test user login prefix (default: 's')"
+    )
+    run.add_argument(
+        "--user-max", dest="user_max", type=int, default=None,
+        help="Override max user index (default: 350)"
+    )
     run.set_defaults(func=loadtest_run)
 
     # IMPORT - generic CSV -> Nextcloud xlsx upsert
