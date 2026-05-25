@@ -33,6 +33,7 @@ def _first_non_empty(*values):
             return str(value).strip()
     return None
 
+
 def get_env_param(compose_dir, key):
     env_path = compose_dir / ".env"
 
@@ -53,6 +54,7 @@ def get_env_param(compose_dir, key):
             return v
 
     return None
+
 
 def get_nextcloud_url(args):
     compose_dir = get_compose_dir(args)
@@ -274,7 +276,14 @@ def deploy_down(args):
         error(f"Не найден docker-compose.yml: {compose_file}")
 
     run_command(
-        ["docker", "compose", "-f", str(compose_file), "down", "--remove-orphans"],
+        [
+            "docker",
+            "compose",
+            "-f",
+            str(compose_file),
+            "down",
+            "--remove-orphans",
+        ],
         cwd=compose_dir,
         stream=True,
     )
