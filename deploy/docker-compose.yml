@@ -3,6 +3,10 @@ services:
     container_name: app-server
     image: nextcloud:33.0-fpm
     restart: always
+    cpus: "2.0"
+    cpuset: "0-1"
+    mem_limit: 2g
+    mem_reservation: 1g
     healthcheck:
       test: ["CMD-SHELL", "php /var/www/html/occ status 2>/dev/null | grep -q 'installed: true'"]
       interval: 10s
@@ -32,6 +36,10 @@ services:
     image: postgres:18
     container_name: nextcloud-db
     restart: always
+    cpus: "1.0"
+    cpuset: "0-1"
+    mem_limit: 1536m
+    mem_reservation: 512m
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
@@ -49,6 +57,10 @@ services:
     container_name: onlyoffice-document-server
     image: onlyoffice/documentserver:9.3
     restart: always
+    cpus: "2.0"
+    cpuset: "0-1"
+    mem_limit: 2g
+    mem_reservation: 1g
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost/healthcheck || exit 1"]
       interval: 30s
@@ -73,6 +85,10 @@ services:
     container_name: nginx-server
     image: nginx:stable-alpine
     restart: always
+    cpus: "0.5"
+    cpuset: "0-1"
+    mem_limit: 256m
+    mem_reservation: 128m
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost || exit 1"]
       interval: 30s
@@ -91,53 +107,24 @@ services:
 
   nextcloud-init:
     image: nextcloud:33.0-fpm
+    cpus: "1.0"
+    cpuset: "0-1"
+    mem_limit: 512m
+    mem_reservation: 256m
     depends_on:
       - app
       - onlyoffice-document-server
       - nginx
     volumes:
       - app_data:/var/www/html
+      - ./nextcloud-init.sh:/usr/local/bin/nextcloud-init.sh:ro,Z
     environment:
       - NEXTCLOUD_HOST=${NEXTCLOUD_HOSTNAME}
       - NEXTCLOUD_TRUSTED_PROXIES=${NEXTCLOUD_TRUSTED_PROXIES}
       - JWT_SECRET=${JWT_SECRET}
       - TZ=${TZ}
-    entrypoint: >
-      sh -c '
-        echo "Waiting for Nextcloud to be INSTALLED...";
-        until php /var/www/html/occ status 2>/dev/null | grep -q "installed: true"; do sleep 2; done;
-
-        echo "Configuring ONLYOFFICE via occ...";
-
-        php /var/www/html/occ app:install onlyoffice || php /var/www/html/occ app:enable onlyoffice;
-
-        php /var/www/html/occ config:app:set onlyoffice DocumentServerUrl --value="/ds-vpath/";
-        php /var/www/html/occ config:app:set onlyoffice DocumentServerInternalUrl --value="http://onlyoffice-document-server/";
-        php /var/www/html/occ config:app:set onlyoffice StorageUrl --value="http://nginx-server/";
-        php /var/www/html/occ config:app:set onlyoffice jwt_secret --value="$${JWT_SECRET}";
-        php /var/www/html/occ config:app:set onlyoffice customizationForcesave --value=true
-
-        # callback URL для server-side (DS external links) идёт через docker-network
-        # hostname. overwriteprotocol/overwritehost НЕ ставим - петля на /login.
-        php /var/www/html/occ config:system:set overwrite.cli.url --value="http://nginx-server" --type=string;
-
-        php /var/www/html/occ config:system:set trusted_proxies --value="$${NEXTCLOUD_TRUSTED_PROXIES}" --type=json;
-        php /var/www/html/occ config:system:set trusted_domains 0 --value="nginx-server" --type=string;
-        php /var/www/html/occ config:system:set trusted_domains 1 --value="$${NEXTCLOUD_HOST}" --type=string;
-
-        php /var/www/html/occ config:system:set memcache.local --value="\\OC\\Memcache\\APCu" --type=string;
-        php /var/www/html/occ background:cron;
-
-        php /var/www/html/occ app:install forms || php /var/www/html/occ app:enable forms;
-
-        php /var/www/html/occ config:system:set appstoreenabled --value=false --type=boolean;
-        php /var/www/html/occ config:system:set has_internet_connection --value=false --type=boolean;
-
-        php /var/www/html/occ maintenance:repair --include-expensive;
-        php /var/www/html/occ db:add-missing-indices;
-
-        echo "ONLYOFFICE and Forms integration apps configured OK";
-      '
+    entrypoint: ["bash", "/usr/local/bin/nextcloud-init.sh"]
+    command: []
     restart: "no"
 
   cron-worker:
@@ -147,6 +134,10 @@ services:
     image: nextcloud-cron-worker:33.0
     container_name: nextcloud-cron-worker
     restart: always
+    cpus: "1.0"
+    cpuset: "0-1"
+    mem_limit: 512m
+    mem_reservation: 256m
     user: "www-data"
     depends_on:
       app:
@@ -160,7 +151,10 @@ services:
       - ./cron-worker.sh:/usr/local/bin/cron-worker.sh:ro,Z
     environment:
       - TZ=${TZ}
+      - CRON_INTERVAL=${CRON_INTERVAL}
+      - SYNC_INTERVAL=${SYNC_INTERVAL}
     entrypoint: ["bash", "/usr/local/bin/cron-worker.sh"]
+    command: []
 
   # Контейнеризованный manage.py CLI. Не стартует с обычным `up` (profiles: tools).
   # Запуск: ./bin/table-cli <args> - wrapper экспортирует REPO_ROOT и зовёт
@@ -181,6 +175,10 @@ services:
       dockerfile: Dockerfile
     image: mse1h2026-table-cli:latest
     profiles: ["tools"]
+    cpus: "1.0"
+    cpuset: "0-1"
+    mem_limit: 512m
+    mem_reservation: 256m
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${REPO_ROOT:?REPO_ROOT must be set; use ./bin/table-cli wrapper}:${REPO_ROOT}
@@ -201,10 +199,14 @@ volumes:
 
 networks:
   default:
+    name: mse1h2026_table_network
     # Фиксируем подсеть, чтобы trusted_proxies в .env матчился именно с нашим
     # bridge'ом, а не с любой другой docker network на машине.
-    # Если порт уже занят другим compose-проектом, поменять
+    # Если подсеть уже занята другим compose-проектом, поменять
     # здесь и в NEXTCLOUD_TRUSTED_PROXIES в .env согласованно.
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: "1500"
     ipam:
       config:
         - subnet: 172.28.0.0/16
