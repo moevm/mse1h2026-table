@@ -1,0 +1,3 @@
+https://nextcloud.localhost {
+	reverse_proxy nginx-server:80
+}
