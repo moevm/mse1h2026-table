@@ -1,14 +1,16 @@
 #!/bin/bash
+set -euo pipefail
 
-CRON_INTERVAL=300   # 5 минут
-SYNC_INTERVAL=10    # 10 секунд
+# Загруженные из окружения (или с дефолтами из .env)
+CRON_INTERVAL=${CRON_INTERVAL:-300}    # 5 минут
+SYNC_INTERVAL=${SYNC_INTERVAL:-10}     # 10 секунд
 NEXTCLOUD_PATH="/var/www/html"
 
 # Переменные состояния
 LAST_CRON_RUN=0
 
 # Обработка корректного завершения (Docker stop)
-trap "echo 'Stopping worker...'; exit 0" SIGTERM SIGINT
+trap 'echo "Stopping worker..."; exit 0' SIGTERM SIGINT
 
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
