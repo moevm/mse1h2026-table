@@ -3,6 +3,7 @@ import json
 import subprocess
 import sys
 import time
+import os
 from pathlib import Path
 
 import requests
@@ -26,39 +27,52 @@ def get_scripts_dir():
     return Path(__file__).resolve().parent
 
 
+def _first_non_empty(*values):
+    for value in values:
+        if value is not None and str(value).strip() != "":
+            return str(value).strip()
+    return None
+
+
 def get_nextcloud_url(args):
-    return getattr(args, "url", "http://localhost:8080")
+    return _first_non_empty(
+        getattr(args, "url", None),
+        os.environ.get("NEXTCLOUD_URL"),
+        os.environ.get("CLI_NEXTCLOUD_URL"),
+    ) or error("Не задан Nextcloud URL: ожидается --url или NEXTCLOUD_URL / CLI_NEXTCLOUD_URL")
 
 
 def get_admin_user(args):
-    return getattr(args, "username", "admin")
+    return _first_non_empty(
+        getattr(args, "username", None),
+        os.environ.get("NEXTCLOUD_ADMIN_USER"),
+    ) or error("Не задан NEXTCLOUD_ADMIN_USER")
 
 
 def get_admin_password(args):
-    return getattr(args, "password", "super_secure_password")
+    return _first_non_empty(
+        getattr(args, "password", None),
+        os.environ.get("NEXTCLOUD_ADMIN_PASSWORD"),
+    ) or error("Не задан NEXTCLOUD_ADMIN_PASSWORD")
 
 
 def get_public_nextcloud_url(compose_dir):
-    """URL Nextcloud для браузера, собранный из deploy/.env.
+    """URL Nextcloud для браузера, собранный из deploy/.env или env.
 
-    В отличие от get_nextcloud_url() (который возвращает URL для polling
-    из контейнера, например http://nginx-server), эта функция строит URL,
-    по которому пользователь заходит снаружи: http://<HOSTNAME>:<PORT>.
+    Это внешний URL вида http://<NEXTCLOUD_HOSTNAME>:<NEXTCLOUD_PORT>.
     """
-    host = "nextcloud.localhost"
-    port = "8080"
-    env_path = compose_dir / ".env"
-    if env_path.exists():
-        for line in env_path.read_text(encoding="utf-8").splitlines():
-            line = line.split("#", 1)[0].strip()
-            if not line or "=" not in line:
-                continue
-            k, v = line.split("=", 1)
-            k, v = k.strip(), v.strip()
-            if k == "NEXTCLOUD_HOSTNAME" and v:
-                host = v
-            elif k == "NEXTCLOUD_PORT" and v:
-                port = v
+    host = _first_non_empty(
+        os.environ.get("NEXTCLOUD_HOSTNAME"),
+        get_env_param(compose_dir, "NEXTCLOUD_HOSTNAME"),
+    )
+    port = _first_non_empty(
+        os.environ.get("NEXTCLOUD_PORT"),
+        get_env_param(compose_dir, "NEXTCLOUD_PORT"),
+    )
+
+    if not host or not port:
+        error("Не заданы NEXTCLOUD_HOSTNAME / NEXTCLOUD_PORT")
+
     return f"http://{host}:{port}"
 
 
@@ -221,7 +235,7 @@ def deploy_down(args):
         error(f"Не найден docker-compose.yml: {compose_file}")
 
     run_command(
-        ["docker", "compose", "-f", str(compose_file), "down"],
+        ["docker", "compose", "-f", str(compose_file), "down", "--remove-orphans"],
         cwd=compose_dir,
         stream=True,
     )
