@@ -57,18 +57,21 @@ def get_env_param(compose_dir, key):
 def get_nextcloud_url(args):
     compose_dir = get_compose_dir(args)
 
+    public_url = None
+
+    host = get_env_param(compose_dir, "NEXTCLOUD_HOSTNAME")
+    port = get_env_param(compose_dir, "NEXTCLOUD_PORT")
+
+    if host and port:
+        public_url = f"http://{host}:{port}"
+
     return _first_non_empty(
         getattr(args, "url", None),
         os.environ.get("NEXTCLOUD_URL"),
         os.environ.get("CLI_NEXTCLOUD_URL"),
-        get_env_param(compose_dir, "CLI_NEXTCLOUD_URL"),
-        (
-            f"http://{get_env_param(compose_dir, 'NEXTCLOUD_HOSTNAME')}:"
-            f"{get_env_param(compose_dir, 'NEXTCLOUD_PORT')}"
-        ),
+        public_url,
     ) or error(
-        "Не задан Nextcloud URL: "
-        "ожидается --url, env или deploy/.env"
+        "Не задан Nextcloud URL"
     )
 
 
