@@ -1,0 +1,8 @@
+# HTTPS overlay для варианта Б (см. раздел HTTPS в README.md).
+services:
+  nginx:
+    ports:
+      - "${NEXTCLOUD_HTTPS_PORT:-8443}:443"
+    volumes:
+      - ./nginx-https.conf:/etc/nginx/nginx.conf:ro,Z
+      - ./certs:/etc/nginx/certs:ro,Z

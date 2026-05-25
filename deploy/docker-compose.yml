@@ -3,9 +3,9 @@ services:
     container_name: app-server
     image: nextcloud:33.0-fpm
     restart: always
-    cpus: "2.0"
-    cpuset: "0-1"
-    mem_limit: 2g
+    cpus: "8.0"
+    cpuset: "0-7"
+    mem_limit: 4g
     mem_reservation: 1g
     healthcheck:
       test: ["CMD-SHELL", "php /var/www/html/occ status 2>/dev/null | grep -q 'installed: true'"]
@@ -36,9 +36,9 @@ services:
     image: postgres:18
     container_name: nextcloud-db
     restart: always
-    cpus: "1.0"
-    cpuset: "0-1"
-    mem_limit: 1536m
+    cpus: "2.0"
+    cpuset: "0-7"
+    mem_limit: 2g
     mem_reservation: 512m
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
@@ -57,9 +57,9 @@ services:
     container_name: onlyoffice-document-server
     image: onlyoffice/documentserver:9.3
     restart: always
-    cpus: "2.0"
-    cpuset: "0-1"
-    mem_limit: 2g
+    cpus: "4.0"
+    cpuset: "0-7"
+    mem_limit: 3g
     mem_reservation: 1g
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost/healthcheck || exit 1"]
@@ -85,9 +85,9 @@ services:
     container_name: nginx-server
     image: nginx:stable-alpine
     restart: always
-    cpus: "0.5"
-    cpuset: "0-1"
-    mem_limit: 256m
+    cpus: "2.0"
+    cpuset: "0-7"
+    mem_limit: 512m
     mem_reservation: 128m
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost || exit 1"]
@@ -108,7 +108,7 @@ services:
   nextcloud-init:
     image: nextcloud:33.0-fpm
     cpus: "1.0"
-    cpuset: "0-1"
+    cpuset: "0-7"
     mem_limit: 512m
     mem_reservation: 256m
     depends_on:
@@ -134,9 +134,9 @@ services:
     image: nextcloud-cron-worker:33.0
     container_name: nextcloud-cron-worker
     restart: always
-    cpus: "1.0"
-    cpuset: "0-1"
-    mem_limit: 512m
+    cpus: "2.0"
+    cpuset: "0-7"
+    mem_limit: 1g
     mem_reservation: 256m
     user: "www-data"
     depends_on:
@@ -176,15 +176,21 @@ services:
     image: mse1h2026-table-cli:latest
     profiles: ["tools"]
     cpus: "1.0"
-    cpuset: "0-1"
+    cpuset: "0-7"
     mem_limit: 512m
     mem_reservation: 256m
+    # Не подключаем cli к default-сети стэка: иначе `deploy down` оставляет
+    # сеть с "Resource is still in use", пока сам cli ещё работает в ней.
+    # Cli ходит на nginx через host-gateway (host'овый порт NEXTCLOUD_PORT).
+    network_mode: bridge
+    extra_hosts:
+      - "nginx-server:host-gateway"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${REPO_ROOT:?REPO_ROOT must be set; use ./bin/table-cli wrapper}:${REPO_ROOT}
     working_dir: ${REPO_ROOT}/table
     environment:
-      - NEXTCLOUD_URL=${CLI_NEXTCLOUD_URL:-http://nginx-server}
+      - NEXTCLOUD_URL=${CLI_NEXTCLOUD_URL:-http://nginx-server:${NEXTCLOUD_PORT:-8080}}
       - NEXTCLOUD_ADMIN_USER=${NEXTCLOUD_ADMIN_USER}
       - NEXTCLOUD_ADMIN_PASSWORD=${NEXTCLOUD_ADMIN_PASSWORD}
       - PYTHONUNBUFFERED=1
@@ -199,7 +205,7 @@ volumes:
 
 networks:
   default:
-    name: mse1h2026_table_network
+    name: deploy_default
     # Фиксируем подсеть, чтобы trusted_proxies в .env матчился именно с нашим
     # bridge'ом, а не с любой другой docker network на машине.
     # Если подсеть уже занята другим compose-проектом, поменять
