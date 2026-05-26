@@ -1,5 +1,4 @@
 import uuid
-import time
 from pathlib import Path
 import os
 
@@ -46,7 +45,7 @@ def test_backup_and_restore_lifecycle(cli):
     assert isinstance(restore_res, dict)
     assert restore_res.get("status") != "error"
 
-    time.sleep(2)
+    cli("deploy", "status", "--wait", "--timeout", "120")
 
     # Проверка восстановления пользователя
     users_after_restore = cli("users", "list", "--filter",
